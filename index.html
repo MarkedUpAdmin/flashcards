@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Flashcards">
+<meta name="theme-color" content="#1F5FBF">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<title>Math Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #1F5FBF;
+  --bg-deep: #184C9A;
+  --card: #FFFDF6;
+  --ink: #1B2440;
+  --rule: #BFD5F2;
+  --margin: #F07167;
+  --soft: #6B7590;
+  --chip-off: rgba(255,255,255,0.14);
+  --chip-on: #FFD23F;
+  --chip-on-ink: #1B2440;
+  --on-bg: #FFFFFF;
+  --miss: #E5383B;
+  --ok: #2EC4B6;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0F2447;
+    --bg-deep: #0A1A35;
+    --card: #F2EEDF;
+    --ink: #17203A;
+    --rule: #B6C9E4;
+    --chip-off: rgba(255,255,255,0.10);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0F2447;
+  --bg-deep: #0A1A35;
+  --card: #F2EEDF;
+  --ink: #17203A;
+  --rule: #B6C9E4;
+  --chip-off: rgba(255,255,255,0.10);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { height: 100%; scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0; height: 100%;
+  background: var(--bg);
+  color: var(--on-bg);
+  font-family: "Fredoka", "Avenir Next Rounded", "Arial Rounded MT Bold", ui-rounded, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none; user-select: none;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
+.screen { height: 100%; display: none; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* Setup */
+#setup { padding: 20px 20px 24px; max-width: 520px; margin: 0 auto; overflow-y: auto; }
+#setup h1 { font-size: 2.1rem; font-weight: 700; margin: 8px 0 4px; line-height: 1.1; }
+#setup p.lead { margin: 0 0 22px; opacity: .85; font-size: 1.05rem; line-height: 1.4; }
+.group-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 10px; }
+.ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--chip-off); border-radius: 16px; padding: 5px; margin-bottom: 16px; }
+.op { padding: 10px 4px; border-radius: 12px; font-size: 1rem; font-weight: 600; line-height: 1.15; }
+.op small { display: block; font-weight: 500; font-size: .8rem; opacity: .8; min-height: 1em; }
+.op[aria-selected="true"] { background: #fff; color: var(--ink); }
+.sets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 10px; }
+.sets.six { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.sets.six .set { font-size: 1.2rem; border-radius: 14px; }
+.set {
+  aspect-ratio: 1; border-radius: 18px; background: var(--chip-off);
+  font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  transition: transform .12s, background .12s;
+}
+.set[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); }
+.set:active { transform: scale(.94); }
+.quick { display: flex; gap: 14px; margin: 2px 0 24px; }
+.quick button { text-decoration: underline; text-underline-offset: 3px; opacity: .85; font-size: .98rem; padding: 4px 0; }
+.option {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 0; border-top: 1px solid rgba(255,255,255,.18); font-size: 1.05rem;
+}
+.option small { display: block; opacity: .7; font-size: .88rem; margin-top: 2px; }
+.switch { width: 54px; height: 32px; border-radius: 16px; background: var(--chip-off); position: relative; flex: none; transition: background .15s; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(22px); }
+.start {
+  margin-top: 22px; width: 100%; padding: 18px; border-radius: 20px;
+  background: var(--chip-on); color: var(--chip-on-ink); font-size: 1.35rem; font-weight: 700;
+}
+.start:disabled { opacity: .45; }
+.count { text-align: center; margin-top: 10px; opacity: .8; font-size: .95rem; }
+
+/* Play */
+#play { padding: 12px 16px 16px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; min-height: 40px; }
+.topbar button { padding: 6px 2px; opacity: .9; }
+.tally { display: flex; gap: 14px; align-items: center; }
+.miss-count { color: #FFB3B5; }
+.stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px 0; touch-action: manipulation; min-height: 0; }
+.card {
+  width: 100%; max-width: 460px; height: 100%; max-height: 640px;
+  background-color: var(--card);
+  background-image:
+    linear-gradient(to right, transparent 46px, var(--margin) 46px, var(--margin) 48px, transparent 48px),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 47px, var(--rule) 47px, var(--rule) 49px);
+  background-position: 0 0, 0 70px;
+  border-radius: 14px;
+  box-shadow: 0 14px 0 var(--bg-deep);
+  color: var(--ink);
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation;
+  transition: transform .22s ease, opacity .22s ease;
+}
+.card.leave { transform: translateX(-110%) rotate(-6deg); opacity: 0; }
+.card.enter { transform: translateX(110%) rotate(6deg); opacity: 0; transition: none; }
+.card.back-leave { transform: translateX(110%) rotate(6deg); opacity: 0; }
+.card.back-enter { transform: translateX(-110%) rotate(-6deg); opacity: 0; transition: none; }
+.problem {
+  display: grid; grid-template-columns: auto auto; column-gap: .25em;
+  font-size: var(--fs, clamp(96px, 30vw, 180px)); font-weight: 600; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.problem .n { text-align: right; }
+.problem .plus { align-self: center; }
+.problem .bar { grid-column: 1 / -1; height: .07em; background: var(--ink); border-radius: .04em; margin: .1em 0 .12em; }
+.problem .ans { grid-column: 1 / -1; text-align: right; color: var(--soft); min-height: 1em; }
+.problem .ans.hidden { visibility: hidden; }
+.stamp {
+  position: absolute; top: 22px; right: 18px;
+  border: 4px solid var(--miss); color: var(--miss); border-radius: 12px;
+  padding: 4px 12px; font-size: 1.3rem; font-weight: 700; transform: rotate(8deg);
+  opacity: 0; scale: 1.6; transition: opacity .15s, scale .15s;
+}
+.card.missed .stamp { opacity: 1; scale: 1; }
+.hint { text-align: center; font-size: .92rem; opacity: .75; padding-top: 18px; line-height: 1.35; }
+
+/* Done */
+#done { align-items: center; justify-content: center; text-align: center; padding: 24px; }
+#done .big { font-size: clamp(56px, 18vw, 96px); font-weight: 700; line-height: 1; margin-bottom: 10px; }
+#done h2 { font-size: 1.8rem; margin: 0 0 8px; }
+#done p { font-size: 1.1rem; opacity: .9; margin: 0 0 24px; line-height: 1.4; max-width: 30ch; }
+#done .start { max-width: 360px; margin-top: 0; }
+.ghost { margin-top: 14px; padding: 12px; text-decoration: underline; text-underline-offset: 3px; font-size: 1.05rem; }
+.retry-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: -8px 0 24px; max-width: 360px; }
+.retry-list span { background: var(--chip-off); border-radius: 10px; padding: 4px 10px; font-size: 1rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .card.leave, .card.back-leave { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<section id="setup" class="screen active" aria-label="Choose cards">
+  <h1>Math flashcards</h1>
+  <p class="lead">Pick the facts to practice. You can mix sets from all three. Tap the card to flip to the next one, double‑tap when it’s a miss.</p>
+
+  <div class="ops" role="tablist" id="ops">
+    <button class="op" role="tab" data-op="add">Add<small></small></button>
+    <button class="op" role="tab" data-op="sub">Subtract<small></small></button>
+    <button class="op" role="tab" data-op="mul">Multiply<small></small></button>
+  </div>
+  <div class="group-title" id="setsTitle">Which sets?</div>
+  <div class="sets" id="sets"></div>
+  <div class="quick">
+    <button id="allBtn">Select all</button>
+    <button id="noneBtn">Clear</button>
+  </div>
+
+  <div class="option">
+    <div>Shuffle the cards</div>
+    <button class="switch" role="switch" id="optShuffle" aria-label="Shuffle the cards"></button>
+  </div>
+  <div class="option">
+    <div>Include zero facts<small>Adds cards like 3 + 0, 5 − 5 and 4 × 0</small></div>
+    <button class="switch" role="switch" id="optZero" aria-label="Include zero facts"></button>
+  </div>
+  <div class="option">
+    <div>Show answers<small>Faint answer under the line, for you</small></div>
+    <button class="switch" role="switch" id="optAns" aria-label="Show answers"></button>
+  </div>
+
+  <button class="start" id="startBtn">Start</button>
+  <div class="count" id="countLabel"></div>
+</section>
+
+<section id="play" class="screen" aria-label="Flashcards">
+  <div class="topbar">
+    <button id="quitBtn">Done</button>
+    <div class="tally"><span id="progress"></span><span class="miss-count" id="missCount"></span></div>
+  </div>
+  <div class="stage" id="stage">
+    <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
+      <div class="problem" id="problem"></div>
+      <div class="stamp">Again</div>
+    </div>
+  </div>
+  <div class="hint" id="hint">Tap for next · Double‑tap if it was wrong · Swipe right to go back</div>
+</section>
+
+<section id="done" class="screen" aria-label="Round finished">
+  <div class="big" id="doneEmoji">🎉</div>
+  <h2 id="doneTitle">All done!</h2>
+  <p id="doneText"></p>
+  <div class="retry-list" id="retryList"></div>
+  <button class="start" id="retryBtn">Try the missed ones</button>
+  <button class="ghost" id="againBtn">Back to sets</button>
+</section>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var KEY = "addition-flashcards-settings";
+  var OPS = {
+    add: { sym: "+", name: "addition", sets: [0,1,2,3,4,5,6,7,8,9] },
+    sub: { sym: "\u2212", name: "subtraction", sets: [1,2,3,4,5,6,7,8,9] },
+    mul: { sym: "\u00d7", name: "multiplication", sets: [1,2,3,4,5,6,7,8,9,10,11,12] }
+  };
+  var state = { sets: { add: [0,1,2,3], sub: [], mul: [] }, tab: "add", shuffle: true, zero: false, answers: false };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (saved) {
+      if (Array.isArray(saved.sets)) saved.sets = { add: saved.sets, sub: [], mul: [] };
+      state = Object.assign(state, saved);
+      ["add","sub","mul"].forEach(function (o) { if (!Array.isArray(state.sets[o])) state.sets[o] = []; });
+      if (!OPS[state.tab]) state.tab = "add";
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  // ---- Setup screen ----
+  var setsEl = $("sets");
+  function setLabel(op, n) {
+    return op === "sub" ? "\u2212 " + n : n + " " + OPS[op].sym;
+  }
+  function renderChips() {
+    var op = state.tab;
+    setsEl.innerHTML = "";
+    setsEl.classList.toggle("six", op === "mul");
+    $("setsTitle").textContent = op === "add" ? "Which addition sets?" : op === "sub" ? "Which subtraction sets?" : "Which times tables?";
+    OPS[op].sets.forEach(function (n) {
+      var b = document.createElement("button");
+      b.className = "set"; b.dataset.n = n;
+      b.textContent = setLabel(op, n);
+      b.setAttribute("aria-label", op === "sub" ? "Minus " + n + " set" : n + " " + OPS[op].name + " set");
+      b.addEventListener("click", function () {
+        var list = state.sets[op], at = list.indexOf(n);
+        if (at >= 0) list.splice(at, 1); else list.push(n);
+        list.sort(function (x, y) { return x - y; }); save(); renderSetup();
+      });
+      setsEl.appendChild(b);
+    });
+  }
+  document.querySelectorAll(".op").forEach(function (b) {
+    b.onclick = function () { state.tab = b.dataset.op; save(); renderChips(); renderSetup(); };
+  });
+  $("allBtn").onclick = function () { state.sets[state.tab] = OPS[state.tab].sets.slice(); save(); renderSetup(); };
+  $("noneBtn").onclick = function () { state.sets[state.tab] = []; save(); renderSetup(); };
+  [["optShuffle","shuffle"],["optZero","zero"],["optAns","answers"]].forEach(function (p) {
+    $(p[0]).onclick = function () { state[p[1]] = !state[p[1]]; save(); renderSetup(); };
+  });
+
+  // A card is [op, top, bottom, answer]
+  function buildDeck(only) {
+    var deck = [];
+    state.sets.add.forEach(function (a) {
+      for (var b = state.zero ? 0 : 1; b <= 9; b++) deck.push(["add", a, b, a + b]);
+    });
+    state.sets.sub.forEach(function (n) {
+      for (var r = state.zero ? 0 : 1; r <= 9; r++) deck.push(["sub", n + r, n, r]);
+    });
+    state.sets.mul.forEach(function (a) {
+      for (var b = state.zero ? 0 : 1; b <= 12; b++) deck.push(["mul", a, b, a * b]);
+    });
+    return only ? deck.filter(function (c) { return c[0] === only; }) : deck;
+  }
+  function renderSetup() {
+    document.querySelectorAll(".op").forEach(function (b) {
+      var o = b.dataset.op, k = state.sets[o].length;
+      b.setAttribute("aria-selected", o === state.tab);
+      b.querySelector("small").textContent = k ? k + (k === 1 ? " set" : " sets") : "";
+    });
+    Array.prototype.forEach.call(setsEl.children, function (b) {
+      b.setAttribute("aria-pressed", state.sets[state.tab].indexOf(+b.dataset.n) >= 0);
+    });
+    $("optShuffle").setAttribute("aria-checked", state.shuffle);
+    $("optZero").setAttribute("aria-checked", state.zero);
+    $("optAns").setAttribute("aria-checked", state.answers);
+    var n = buildDeck().length;
+    $("startBtn").disabled = n === 0;
+    $("countLabel").textContent = n ? n + " cards" : "Pick at least one set";
+  }
+
+  // ---- Play ----
+  var deck = [], idx = 0, missed = {}, wakeLock = null;
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function show(id) {
+    document.querySelectorAll(".screen").forEach(function (s) { s.classList.toggle("active", s.id === id); });
+  }
+  function keepAwake() {
+    try { if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { wakeLock = l; }).catch(function(){}); } catch (e) {}
+  }
+  function startRound(cards) {
+    deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
+    idx = 0; missed = {};
+    show("play"); renderCard(); keepAwake();
+  }
+  function keyOf(c) { return c[0] + ":" + c[1] + ":" + c[2]; }
+  function renderCard() {
+    var c = deck[idx];
+    $("problem").innerHTML =
+      '<span></span><span class="n">' + c[1] + '</span>' +
+      '<span class="plus">' + OPS[c[0]].sym + '</span><span class="n">' + c[2] + '</span>' +
+      '<div class="bar"></div>' +
+      '<div class="ans' + (state.answers ? '' : ' hidden') + '">' + c[3] + '</div>';
+    var digits = Math.max(String(c[1]).length, String(c[3]).length);
+    $("problem").style.setProperty("--fs", digits >= 3 ? "clamp(72px, 22vw, 150px)" : "clamp(96px, 30vw, 180px)");
+    $("card").classList.toggle("missed", !!missed[keyOf(c)]);
+    $("card").setAttribute("aria-label", c[1] + (c[0] === "add" ? " plus " : c[0] === "sub" ? " minus " : " times ") + c[2]);
+    $("progress").textContent = (idx + 1) + " of " + deck.length;
+    var m = Object.keys(missed).length;
+    $("missCount").textContent = m ? m + " to redo" : "";
+  }
+  var busy = false;
+  function go(dir) {
+    if (busy) return;
+    var card = $("card");
+    if (dir > 0 && idx >= deck.length - 1) { finish(); return; }
+    if (dir < 0 && idx === 0) return;
+    busy = true;
+    card.classList.add(dir > 0 ? "leave" : "back-leave");
+    setTimeout(function () {
+      idx += dir;
+      card.classList.remove("leave", "back-leave");
+      card.classList.add(dir > 0 ? "enter" : "back-enter");
+      renderCard();
+      void card.offsetWidth;
+      card.classList.remove("enter", "back-enter");
+      busy = false;
+    }, reduceMotion() ? 0 : 200);
+  }
+  function reduceMotion() { return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; }
+  function toggleMiss() {
+    var k = keyOf(deck[idx]);
+    if (missed[k]) { delete missed[k]; renderCard(); return; }
+    missed[k] = deck[idx];
+    renderCard();
+    if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
+    setTimeout(function () { go(1); }, 550);
+  }
+  function finish() {
+    var list = Object.keys(missed).map(function (k) { return missed[k]; });
+    show("done");
+    var rl = $("retryList"); rl.innerHTML = "";
+    if (list.length) {
+      $("doneEmoji").textContent = "💪";
+      $("doneTitle").textContent = "Round done!";
+      $("doneText").textContent = list.length === 1 ? "1 card to try again:" : list.length + " cards to try again:";
+      list.forEach(function (c) { var s = document.createElement("span"); s.textContent = c[1] + " " + OPS[c[0]].sym + " " + c[2]; rl.appendChild(s); });
+      $("retryBtn").style.display = "";
+      $("retryBtn").onclick = function () { startRound(list); };
+    } else {
+      $("doneEmoji").textContent = "🎉";
+      $("doneTitle").textContent = "All correct!";
+      $("doneText").textContent = "Every card in this round was right.";
+      $("retryBtn").style.display = "none";
+    }
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+
+  // Tap / double-tap / swipe
+  var stage = $("stage"), lastTap = 0, tapTimer = null, sx = 0, sy = 0, st = 0;
+  stage.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; st = Date.now(); });
+  stage.addEventListener("pointerup", function (e) {
+    var dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
+      clearTimeout(tapTimer); tapTimer = null;
+      go(dx > 0 ? -1 : 1); return;
+    }
+    if (Math.abs(dx) > 12 || Math.abs(dy) > 12) return;
+    var now = Date.now();
+    if (tapTimer && now - lastTap < 300) {
+      clearTimeout(tapTimer); tapTimer = null; lastTap = 0;
+      toggleMiss();
+    } else {
+      lastTap = now;
+      tapTimer = setTimeout(function () { tapTimer = null; go(1); }, 300);
+    }
+  });
+  stage.addEventListener("dblclick", function (e) { e.preventDefault(); });
+  document.addEventListener("keydown", function (e) {
+    if (!$("play").classList.contains("active")) return;
+    if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); go(1); }
+    else if (e.key === "ArrowLeft") go(-1);
+    else if (e.key === "x" || e.key === "Backspace") toggleMiss();
+  });
+
+  $("startBtn").onclick = function () { startRound(buildDeck()); };
+  $("quitBtn").onclick = function () { show("setup"); renderSetup(); };
+  $("againBtn").onclick = function () { show("setup"); renderSetup(); };
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && $("play").classList.contains("active")) keepAwake();
+  });
+
+  renderChips();
+  renderSetup();
+  if ("serviceWorker" in navigator) {
+    try { navigator.serviceWorker.register("sw.js").catch(function () {}); } catch (e) {}
+  }
+})();
+</script>
+</body>
+</html>
