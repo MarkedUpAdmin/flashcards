@@ -222,6 +222,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 #done, #results { align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; }
 #done .big, #results .big { font-size: clamp(56px, 18vw, 96px); font-weight: 700; line-height: 1; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
 #done h2, #results h2 { font-size: 1.8rem; margin: 0 0 8px; }
+#resultTitle { line-height: 1.25; max-width: 18em; }
+#resultTitle.finish-line { font-size: 1.45rem; }
 #done p, #results p { font-size: 1.1rem; opacity: .9; margin: 0 0 12px; line-height: 1.4; max-width: 34ch; }
 #done .start, #results .start { max-width: 360px; margin-top: 8px; }
 #resultBest { font-weight: 700; font-size: 1.25rem; opacity: 1; }
@@ -600,8 +602,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (!timed || !timed.running || timed.finished) return;
     var left = timed.endAt - Date.now();
     if (left <= 0) {
-      updateTimerDom(0);
-      finishTimed();
+      finishTimed(false);
       return;
     }
     updateTimerDom(left);
@@ -630,7 +631,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       remainingMs: ROUND_MS,
       endAt: 0,
       running: true,
-      finished: false
+      finished: false,
+      total: cards.length
     };
     deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
     idx = 0;
@@ -645,17 +647,12 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   }
   function answerTimed(right) {
     if (mode !== "timed" || !timed || !timed.running || timed.finished) return;
-    if (Date.now() >= timed.endAt) { finishTimed(); return; }
+    if (Date.now() >= timed.endAt) { finishTimed(false); return; }
     timed.attempted += 1;
     if (right) timed.correct += 1;
     updateScore();
+    if (timed.attempted >= timed.total) { finishTimed(true); return; }
     idx += 1;
-    if (idx >= deck.length) {
-      var cards = buildDeck(timed.op);
-      if (!cards.length) return;
-      deck = timed.shuffle ? shuffle(cards.slice()) : cards.slice();
-      idx = 0;
-    }
     renderCard();
     var card = $("card");
     card.classList.remove("pop");
@@ -665,7 +662,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   function onBackground() {
     if (!timed || timed.finished || !timed.running) return;
     var left = Math.max(0, timed.endAt - Date.now());
-    if (left <= 0) { finishTimed(); return; }
+    if (left <= 0) { finishTimed(false); return; }
     timed.remainingMs = left;
     timed.running = false;
     stopTicking();
@@ -674,7 +671,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (document.visibilityState === "hidden") return;
     if ($("play").classList.contains("active")) keepAwake();
     if (!timed || timed.finished || timed.running) return;
-    if (timed.remainingMs <= 0) { finishTimed(); return; }
+    if (timed.remainingMs <= 0) { finishTimed(false); return; }
     timed.endAt = Date.now() + timed.remainingMs;
     timed.running = true;
     startTicking();
@@ -687,7 +684,25 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (!r.attempted) return 0;
     return Math.round(r.correct * 100 / r.attempted);
   }
+  function roundCompleted(r) { return !!(r && r.completed === true); }
+  function roundElapsed(r) {
+    return r && typeof r.elapsed === "number" && isFinite(r.elapsed) ? r.elapsed : 60;
+  }
+  function formatSeconds(n) { return (Math.round(n * 10) / 10).toFixed(1); }
+  function elapsedNow() {
+    var left = Math.max(0, timed.endAt - Date.now());
+    var ms = ROUND_MS - left;
+    if (ms < 0) ms = 0;
+    if (ms > ROUND_MS) ms = ROUND_MS;
+    return Math.round(ms / 100) / 10;
+  }
   function better(a, b) {
+    var ac = roundCompleted(a), bc = roundCompleted(b);
+    if (ac !== bc) return ac;
+    if (ac) {
+      if (a.correct !== b.correct) return a.correct > b.correct;
+      return roundElapsed(a) < roundElapsed(b);
+    }
     if (a.correct !== b.correct) return a.correct > b.correct;
     return accuracyPct(a) > accuracyPct(b);
   }
@@ -752,21 +767,26 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       r.shuffle ? "shuffled" : "in order"
     ].join(" · ");
   }
+  function recordPhrase(r) {
+    if (roundCompleted(r)) return r.correct + " correct in " + formatSeconds(roundElapsed(r)) + " s";
+    return r.correct + " correct (" + accuracyPct(r) + "%)";
+  }
   function bestMessage(record, info) {
     var name = OPS[record.op].name;
     if (!info.prevBest) {
-      if (record.correct > 0) return "New best for these " + name + " cards!";
+      if (record.correct > 0 || roundCompleted(record)) return "New best for these " + name + " cards!";
       return "First saved round for these " + name + " cards.";
     }
     if (info.isNew) return "New best for these " + name + " cards!";
-    return "Not a new best. Your record for these " + name + " cards is " + info.prevBest.correct + " correct (" + accuracyPct(info.prevBest) + "%).";
+    return "Not a new best. Your record for these " + name + " cards is " + recordPhrase(info.prevBest) + ".";
   }
-  function finishTimed() {
+  function finishTimed(completed) {
     if (!timed || timed.finished) return;
+    var done = completed === true;
     timed.finished = true;
     timed.running = false;
     stopTicking();
-    updateTimerDom(0);
+    if (!done) updateTimerDom(0);
     var record = {
       t: Date.now(),
       op: timed.op,
@@ -775,10 +795,15 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       answers: timed.answers,
       shuffle: timed.shuffle,
       correct: timed.correct,
-      attempted: timed.attempted
+      attempted: timed.attempted,
+      elapsed: done ? elapsedNow() : 60,
+      completed: done
     };
     var info = recordRound(record);
-    $("resultTitle").textContent = "Time's up!";
+    $("resultTitle").classList.toggle("finish-line", done);
+    $("resultTitle").textContent = done
+      ? "Finished all " + timed.total + " cards in " + formatSeconds(record.elapsed) + " s"
+      : "Time's up!";
     $("resultCorrect").textContent = String(record.correct);
     $("resultCorrectLabel").textContent = "correct";
     $("resultDetail").textContent = record.attempted + " tried · " + accuracyPct(record) + "% accuracy";
@@ -800,16 +825,25 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       return String(new Date(ts));
     }
   }
-  function personalBests(rounds) {
-    var out = {};
-    rounds.forEach(function (r) {
-      if (!out[r.op] || better(r, out[r.op])) out[r.op] = r;
-    });
-    return out;
+  function settingsKey(r) {
+    return [r.op, r.sets.slice().sort(function (a, b) { return a - b; }).join(","), r.zero ? 1 : 0, r.answers ? 1 : 0, r.shuffle ? 1 : 0].join("|");
+  }
+  function bestDetail(best) {
+    var parts = [];
+    if (roundCompleted(best)) parts.push("Finished " + best.attempted + " cards in " + formatSeconds(roundElapsed(best)) + " s");
+    parts.push(best.correct + " correct · " + accuracyPct(best) + "%");
+    parts.push(rangeText(best.op, best.sets));
+    parts.push(best.zero ? "zeros included" : "no zeros");
+    parts.push(best.answers ? "answers shown" : "answers hidden");
+    return parts.join(" · ");
   }
   function renderHistory() {
     var rounds = loadRounds().sort(function (a, b) { return b.t - a.t; });
-    var bests = personalBests(rounds);
+    var groups = {};
+    rounds.forEach(function (r) {
+      var k = settingsKey(r);
+      if (!groups[k] || better(r, groups[k])) groups[k] = r;
+    });
     var bestsEl = $("bests");
     bestsEl.innerHTML = "";
     ["add", "sub", "mul"].forEach(function (op) {
@@ -817,13 +851,19 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       box.className = "best";
       var title = document.createElement("b");
       title.textContent = OPS[op].title + " best";
-      var detail = document.createElement("span");
-      var best = bests[op];
-      detail.textContent = best
-        ? best.correct + " correct · " + accuracyPct(best) + "% · " + rangeText(best.op, best.sets) + " · " + (best.zero ? "zeros included" : "no zeros") + " · " + (best.answers ? "answers shown" : "answers hidden")
-        : "No rounds yet";
       box.appendChild(title);
-      box.appendChild(detail);
+      var lines = Object.keys(groups).filter(function (k) { return groups[k].op === op; });
+      lines.sort();
+      if (!lines.length) {
+        var emptyBest = document.createElement("span");
+        emptyBest.textContent = "No rounds yet";
+        box.appendChild(emptyBest);
+      }
+      lines.forEach(function (k) {
+        var detail = document.createElement("span");
+        detail.textContent = bestDetail(groups[k]);
+        box.appendChild(detail);
+      });
       bestsEl.appendChild(box);
     });
     var list = $("historyList");
@@ -840,7 +880,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       var when = document.createElement("div");
       when.className = "when";
       when.textContent = formatWhen(r.t);
-      if (bests[r.op] === r) {
+      if (groups[settingsKey(r)] === r) {
         var tag = document.createElement("span");
         tag.className = "tag";
         tag.textContent = "Best";
@@ -848,7 +888,9 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       }
       var score = document.createElement("div");
       score.className = "scoreline";
-      score.textContent = r.correct + " correct / " + r.attempted + " tried · " + accuracyPct(r) + "%";
+      var scoreText = r.correct + " correct / " + r.attempted + " tried · " + accuracyPct(r) + "%";
+      if (roundCompleted(r)) scoreText = "Finished in " + formatSeconds(roundElapsed(r)) + " s · " + scoreText;
+      score.textContent = scoreText;
       var meta = document.createElement("div");
       meta.className = "meta";
       meta.textContent = settingsText(r);
