@@ -66,54 +66,100 @@ body {
   -webkit-user-select: none; user-select: none;
   overscroll-behavior: none;
 }
-button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; touch-action: manipulation; }
 button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 .screen { height: 100%; display: none; flex-direction: column; }
 .screen.active { display: flex; }
+[hidden] { display: none !important; }
 
 /* Setup */
-#setup { padding: 20px 20px 24px; max-width: 520px; margin: 0 auto; overflow-y: auto; }
-#setup h1 { font-size: 2.1rem; font-weight: 700; margin: 8px 0 4px; line-height: 1.1; }
-#setup p.lead { margin: 0 0 22px; opacity: .85; font-size: 1.05rem; line-height: 1.4; }
+#setup { padding: 8px 20px 10px; max-width: 520px; margin: 0 auto; width: 100%; overflow: hidden; }
+.setup-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 0 8px; }
+.setup-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+#setup h1 { font-size: 1.9rem; font-weight: 700; margin: 4px 0 2px; line-height: 1.1; }
+#openHistory { flex: none; min-height: 44px; margin-top: 10px; padding: 8px 2px; font-size: 1.05rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+#setup p.lead { margin: 0 0 12px; opacity: .85; font-size: 1.05rem; line-height: 1.4; }
 .group-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 10px; }
-.ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--chip-off); border-radius: 16px; padding: 5px; margin-bottom: 16px; }
-.op { padding: 10px 4px; border-radius: 12px; font-size: 1rem; font-weight: 600; line-height: 1.15; }
+.ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--chip-off); border-radius: 16px; padding: 5px; margin-bottom: 12px; }
+.op { padding: 10px 4px; border-radius: 12px; font-size: 1rem; font-weight: 600; line-height: 1.15; min-height: 48px; }
 .op small { display: block; font-weight: 500; font-size: .8rem; opacity: .8; min-height: 1em; }
 .op[aria-selected="true"] { background: #fff; color: var(--ink); }
-.sets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 10px; }
-.sets.six { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+.sets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 8px; }
+.sets.six { grid-template-columns: repeat(6, 1fr); gap: 6px; }
 .sets.six .set { font-size: 1.2rem; border-radius: 14px; }
 .set {
-  aspect-ratio: 1; border-radius: 18px; background: var(--chip-off);
-  font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  height: 52px; border-radius: 16px; background: var(--chip-off);
+  font-size: 1.35rem; font-weight: 600; display: flex; align-items: center; justify-content: center;
   transition: transform .12s, background .12s;
 }
 .set[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); }
 .set:active { transform: scale(.94); }
-.quick { display: flex; gap: 14px; margin: 2px 0 24px; }
-.quick button { text-decoration: underline; text-underline-offset: 3px; opacity: .85; font-size: .98rem; padding: 4px 0; }
+.quick { display: flex; gap: 14px; margin: 2px 0 8px; }
+.quick button { text-decoration: underline; text-underline-offset: 3px; opacity: .85; font-size: .98rem; padding: 8px 0; min-height: 44px; }
 .option {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 14px 0; border-top: 1px solid rgba(255,255,255,.18); font-size: 1.05rem;
+  padding: 8px 0; border-top: 1px solid rgba(255,255,255,.18); font-size: 1.05rem;
 }
 .option small { display: block; opacity: .7; font-size: .88rem; margin-top: 2px; }
 .switch { width: 54px; height: 32px; border-radius: 16px; background: var(--chip-off); position: relative; flex: none; transition: background .15s; }
+.switch::before { content: ""; position: absolute; inset: -8px -6px; }
 .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: transform .15s; }
 .switch[aria-checked="true"] { background: var(--ok); }
 .switch[aria-checked="true"]::after { transform: translateX(22px); }
+.setup-actions { padding-top: 8px; }
 .start {
-  margin-top: 22px; width: 100%; padding: 18px; border-radius: 20px;
+  margin-top: 10px; width: 100%; padding: 14px; border-radius: 20px;
   background: var(--chip-on); color: var(--chip-on-ink); font-size: 1.35rem; font-weight: 700;
+  min-height: 56px;
 }
+.start:active { transform: scale(.98); }
 .start:disabled { opacity: .45; }
-.count { text-align: center; margin-top: 10px; opacity: .8; font-size: .95rem; }
+.start.timed-start {
+  background: transparent;
+  color: var(--on-bg);
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.92);
+  padding: 10px 16px;
+  line-height: 1.15;
+}
+.start.timed-start small {
+  display: block; font-weight: 500; font-size: .88rem; opacity: .88; margin-top: 3px;
+}
+.count { text-align: center; margin-top: 8px; opacity: .8; font-size: .95rem; min-height: 1.2em; }
 
 /* Play */
 #play { padding: 12px 16px 16px; }
-.topbar { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; min-height: 40px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; min-height: 40px; flex: none; }
 .topbar button { padding: 6px 2px; opacity: .9; }
-.tally { display: flex; gap: 14px; align-items: center; }
+#play.timed .topbar button, #history .topbar button, #results .topbar button { min-height: 44px; padding: 10px 4px; font-weight: 600; }
+.tally { display: flex; gap: 14px; align-items: center; font-variant-numeric: tabular-nums; }
 .miss-count { color: #FFB3B5; }
+.timer-bar {
+  flex: none;
+  height: 118px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.timer-num {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  min-width: 2ch;
+  text-align: center;
+  white-space: nowrap;
+}
+.timer-num.low { color: var(--chip-on); }
+.timer-caption, .timer-score {
+  font-size: .98rem;
+  line-height: 1.25;
+  min-height: 1.25em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.timer-caption { opacity: .8; }
 .stage { flex: 1; display: flex; align-items: center; justify-content: center; padding: 10px 0; touch-action: manipulation; min-height: 0; }
 .card {
   width: 100%; max-width: 460px; height: 100%; max-height: 640px;
@@ -130,10 +176,13 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   touch-action: manipulation;
   transition: transform .22s ease, opacity .22s ease;
 }
+#play.timed .card { transition: none; }
 .card.leave { transform: translateX(-110%) rotate(-6deg); opacity: 0; }
 .card.enter { transform: translateX(110%) rotate(6deg); opacity: 0; transition: none; }
 .card.back-leave { transform: translateX(110%) rotate(6deg); opacity: 0; }
 .card.back-enter { transform: translateX(-110%) rotate(-6deg); opacity: 0; transition: none; }
+.card.pop { animation: pop .12s ease; }
+@keyframes pop { from { transform: scale(.97); } to { transform: scale(1); } }
 .problem {
   display: grid; grid-template-columns: auto auto; column-gap: .25em;
   font-size: var(--fs, clamp(96px, 30vw, 180px)); font-weight: 600; line-height: 1;
@@ -151,62 +200,120 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   opacity: 0; scale: 1.6; transition: opacity .15s, scale .15s;
 }
 .card.missed .stamp { opacity: 1; scale: 1; }
-.hint { text-align: center; font-size: .92rem; opacity: .75; padding-top: 18px; line-height: 1.35; }
+.hint { text-align: center; font-size: .92rem; opacity: .75; padding-top: 18px; line-height: 1.35; flex: none; }
+.timed-actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  padding-top: 12px;
+}
+.judge {
+  min-height: 72px;
+  border-radius: 18px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+.judge.miss { background: rgba(255,255,255,.16); }
+.judge.ok { background: var(--chip-on); color: var(--chip-on-ink); }
+.judge:active { transform: scale(.98); }
 
 /* Done */
-#done { align-items: center; justify-content: center; text-align: center; padding: 24px; }
-#done .big { font-size: clamp(56px, 18vw, 96px); font-weight: 700; line-height: 1; margin-bottom: 10px; }
-#done h2 { font-size: 1.8rem; margin: 0 0 8px; }
-#done p { font-size: 1.1rem; opacity: .9; margin: 0 0 24px; line-height: 1.4; max-width: 30ch; }
-#done .start { max-width: 360px; margin-top: 0; }
-.ghost { margin-top: 14px; padding: 12px; text-decoration: underline; text-underline-offset: 3px; font-size: 1.05rem; }
+#done, #results { align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; }
+#done .big, #results .big { font-size: clamp(56px, 18vw, 96px); font-weight: 700; line-height: 1; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+#done h2, #results h2 { font-size: 1.8rem; margin: 0 0 8px; }
+#done p, #results p { font-size: 1.1rem; opacity: .9; margin: 0 0 12px; line-height: 1.4; max-width: 34ch; }
+#done .start, #results .start { max-width: 360px; margin-top: 8px; }
+#resultBest { font-weight: 700; font-size: 1.25rem; opacity: 1; }
+#resultSettings { font-size: .95rem; }
+.ghost { margin-top: 8px; padding: 12px; min-height: 48px; text-decoration: underline; text-underline-offset: 3px; font-size: 1.05rem; }
 .retry-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: -8px 0 24px; max-width: 360px; }
 .retry-list span { background: var(--chip-off); border-radius: 10px; padding: 4px 10px; font-size: 1rem; }
 
+/* History */
+#history { padding: 8px 20px 14px; max-width: 520px; margin: 0 auto; width: 100%; }
+#history h2 { font-size: 1.7rem; margin: 4px 0 10px; }
+.history-scroll { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.bests { display: flex; flex-direction: column; gap: 8px; margin: 0 0 8px; }
+.best { background: rgba(255,255,255,.12); border-radius: 14px; padding: 12px 14px; text-align: left; }
+.best b { display: block; font-size: 1.05rem; }
+.best span { display: block; opacity: .88; font-size: .92rem; margin-top: 2px; line-height: 1.35; }
+.history-empty { opacity: .9; padding: 8px 0 16px; line-height: 1.4; }
+.round { text-align: left; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.18); }
+.round .when { opacity: .75; font-size: .9rem; }
+.round .scoreline { font-size: 1.15rem; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.round .meta { opacity: .88; font-size: .92rem; margin-top: 2px; line-height: 1.35; }
+.round .tag { display: inline-block; margin-left: 6px; background: var(--chip-on); color: var(--chip-on-ink); border-radius: 8px; padding: 0 6px; font-size: .8rem; font-weight: 700; }
+#clearHistory {
+  flex: none;
+  width: 100%;
+  min-height: 56px;
+  margin-top: 8px;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.92);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+#clearHistory:disabled { opacity: .45; }
+.device-note { text-align: center; opacity: .7; font-size: .85rem; margin: 8px 0 0; flex: none; }
+
 @media (prefers-reduced-motion: reduce) {
-  .card, .card.leave, .card.back-leave { transition: none; }
+  .card, .card.leave, .card.back-leave, .card.pop { transition: none; animation: none; }
 }
 </style>
 </head>
 <body>
 
 <section id="setup" class="screen active" aria-label="Choose cards">
-  <h1>Math flashcards</h1>
-  <p class="lead">Pick the facts to practice. You can mix sets from all three. Tap the card to flip to the next one, double‑tap when it’s a miss.</p>
+  <div class="setup-scroll">
+    <div class="setup-head">
+      <h1>Math flashcards</h1>
+      <button id="openHistory" type="button">My times</button>
+    </div>
+    <p class="lead">Pick the facts to practice. You can mix sets from all three. Tap the card to flip to the next one, double‑tap when it’s a miss.</p>
 
-  <div class="ops" role="tablist" id="ops">
-    <button class="op" role="tab" data-op="add">Add<small></small></button>
-    <button class="op" role="tab" data-op="sub">Subtract<small></small></button>
-    <button class="op" role="tab" data-op="mul">Multiply<small></small></button>
-  </div>
-  <div class="group-title" id="setsTitle">Which sets?</div>
-  <div class="sets" id="sets"></div>
-  <div class="quick">
-    <button id="allBtn">Select all</button>
-    <button id="noneBtn">Clear</button>
-  </div>
+    <div class="ops" role="tablist" id="ops">
+      <button class="op" role="tab" data-op="add" type="button">Add<small></small></button>
+      <button class="op" role="tab" data-op="sub" type="button">Subtract<small></small></button>
+      <button class="op" role="tab" data-op="mul" type="button">Multiply<small></small></button>
+    </div>
+    <div class="group-title" id="setsTitle">Which sets?</div>
+    <div class="sets" id="sets"></div>
+    <div class="quick">
+      <button id="allBtn" type="button">Select all</button>
+      <button id="noneBtn" type="button">Clear</button>
+    </div>
 
-  <div class="option">
-    <div>Shuffle the cards</div>
-    <button class="switch" role="switch" id="optShuffle" aria-label="Shuffle the cards"></button>
+    <div class="option">
+      <div>Shuffle the cards</div>
+      <button class="switch" role="switch" id="optShuffle" aria-label="Shuffle the cards" type="button"></button>
+    </div>
+    <div class="option">
+      <div>Include zero facts<small>Adds cards like 3 + 0, 5 − 5 and 4 × 0</small></div>
+      <button class="switch" role="switch" id="optZero" aria-label="Include zero facts" type="button"></button>
+    </div>
+    <div class="option">
+      <div>Show answers<small>Faint answer under the line, for you</small></div>
+      <button class="switch" role="switch" id="optAns" aria-label="Show answers" type="button"></button>
+    </div>
+    <div class="setup-actions">
+      <button class="start" id="startBtn" type="button">Start</button>
+      <div class="count" id="countLabel"></div>
+      <button class="start timed-start" id="timedBtn" type="button">60-second round<small id="timedHint"></small></button>
+    </div>
   </div>
-  <div class="option">
-    <div>Include zero facts<small>Adds cards like 3 + 0, 5 − 5 and 4 × 0</small></div>
-    <button class="switch" role="switch" id="optZero" aria-label="Include zero facts"></button>
-  </div>
-  <div class="option">
-    <div>Show answers<small>Faint answer under the line, for you</small></div>
-    <button class="switch" role="switch" id="optAns" aria-label="Show answers"></button>
-  </div>
-
-  <button class="start" id="startBtn">Start</button>
-  <div class="count" id="countLabel"></div>
 </section>
 
 <section id="play" class="screen" aria-label="Flashcards">
   <div class="topbar">
-    <button id="quitBtn">Done</button>
+    <button id="quitBtn" type="button">Done</button>
     <div class="tally"><span id="progress"></span><span class="miss-count" id="missCount"></span></div>
+  </div>
+  <div class="timer-bar" id="timerBar" hidden>
+    <div class="timer-num" id="timerNum" role="timer" aria-label="60 seconds left">60</div>
+    <div class="timer-caption">seconds left</div>
+    <div class="timer-score" id="timerScore" aria-live="polite">0 correct · 0 tried</div>
   </div>
   <div class="stage" id="stage">
     <div class="card" id="card" role="button" tabindex="0" aria-label="Flashcard">
@@ -215,6 +322,10 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     </div>
   </div>
   <div class="hint" id="hint">Tap for next · Double‑tap if it was wrong · Swipe right to go back</div>
+  <div class="timed-actions" id="timedActions" hidden role="group" aria-label="Mark this card">
+    <button class="judge miss" id="wrongBtn" type="button">Missed</button>
+    <button class="judge ok" id="rightBtn" type="button">Got it</button>
+  </div>
 </section>
 
 <section id="done" class="screen" aria-label="Round finished">
@@ -222,18 +333,45 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   <h2 id="doneTitle">All done!</h2>
   <p id="doneText"></p>
   <div class="retry-list" id="retryList"></div>
-  <button class="start" id="retryBtn">Try the missed ones</button>
-  <button class="ghost" id="againBtn">Back to sets</button>
+  <button class="start" id="retryBtn" type="button">Try the missed ones</button>
+  <button class="ghost" id="againBtn" type="button">Back to sets</button>
+</section>
+
+<section id="results" class="screen" aria-label="Timed round results">
+  <h2 id="resultTitle" tabindex="-1">Time's up!</h2>
+  <div class="big" id="resultCorrect">0</div>
+  <p id="resultCorrectLabel">correct</p>
+  <p id="resultDetail"></p>
+  <p id="resultBest"></p>
+  <p id="resultSettings"></p>
+  <button class="start" id="resultAgain" type="button">Another 60 seconds</button>
+  <button class="ghost" id="resultHistory" type="button">My times</button>
+  <button class="ghost" id="resultHome" type="button">Back to sets</button>
+</section>
+
+<section id="history" class="screen" aria-label="My times">
+  <div class="topbar">
+    <button id="historyBack" type="button">Back</button>
+  </div>
+  <h2>My times</h2>
+  <div class="history-scroll">
+    <div class="bests" id="bests"></div>
+    <div id="historyList"></div>
+  </div>
+  <button id="clearHistory" type="button">Clear history</button>
+  <p class="device-note">Saved on this device only.</p>
 </section>
 
 <script>
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var KEY = "addition-flashcards-settings";
+  var TIMES_KEY = "math-flashcards-rounds";
+  var ROUND_MS = 60000;
   var OPS = {
-    add: { sym: "+", name: "addition", sets: [0,1,2,3,4,5,6,7,8,9] },
-    sub: { sym: "\u2212", name: "subtraction", sets: [1,2,3,4,5,6,7,8,9] },
-    mul: { sym: "\u00d7", name: "multiplication", sets: [1,2,3,4,5,6,7,8,9,10,11,12] }
+    add: { sym: "+", name: "addition", title: "Addition", sets: [0,1,2,3,4,5,6,7,8,9] },
+    sub: { sym: "\u2212", name: "subtraction", title: "Subtraction", sets: [1,2,3,4,5,6,7,8,9] },
+    mul: { sym: "\u00d7", name: "multiplication", title: "Multiplication", sets: [1,2,3,4,5,6,7,8,9,10,11,12] }
   };
   var state = { sets: { add: [0,1,2,3], sub: [], mul: [] }, tab: "add", shuffle: true, zero: false, answers: false };
   try {
@@ -259,7 +397,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     $("setsTitle").textContent = op === "add" ? "Which addition sets?" : op === "sub" ? "Which subtraction sets?" : "Which times tables?";
     OPS[op].sets.forEach(function (n) {
       var b = document.createElement("button");
-      b.className = "set"; b.dataset.n = n;
+      b.className = "set"; b.dataset.n = n; b.type = "button";
       b.textContent = setLabel(op, n);
       b.setAttribute("aria-label", op === "sub" ? "Minus " + n + " set" : n + " " + OPS[op].name + " set");
       b.addEventListener("click", function () {
@@ -308,10 +446,21 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     var n = buildDeck().length;
     $("startBtn").disabled = n === 0;
     $("countLabel").textContent = n ? n + " cards" : "Pick at least one set";
+    var tn = buildDeck(state.tab).length;
+    $("timedBtn").disabled = tn === 0;
+    $("timedHint").textContent = tn
+      ? OPS[state.tab].title + " sets on this tab · " + tn + " cards"
+      : "Pick a " + OPS[state.tab].name + " set on this tab";
   }
 
   // ---- Play ----
   var deck = [], idx = 0, missed = {}, wakeLock = null;
+  var mode = "practice";
+  var timed = null;
+  var timerHandle = null;
+  var shownSec = -1;
+  var historyReturn = "setup";
+
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
     return a;
@@ -322,7 +471,32 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   function keepAwake() {
     try { if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function (l) { wakeLock = l; }).catch(function(){}); } catch (e) {}
   }
+  function releaseWake() {
+    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+  }
+  function hideTimedChrome() {
+    $("play").classList.remove("timed");
+    $("timerBar").hidden = true;
+    $("timedActions").hidden = true;
+    $("hint").hidden = false;
+    $("quitBtn").textContent = "Done";
+  }
+  function showTimedChrome() {
+    $("play").classList.add("timed");
+    $("timerBar").hidden = false;
+    $("timedActions").hidden = false;
+    $("hint").hidden = true;
+    $("quitBtn").textContent = "Stop";
+    shownSec = -1;
+    updateTimerDom(timed ? timed.remainingMs : ROUND_MS);
+    updateScore();
+  }
   function startRound(cards) {
+    mode = "practice";
+    if (timed) { timed.running = false; timed.finished = true; }
+    timed = null;
+    stopTicking();
+    hideTimedChrome();
     deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
     idx = 0; missed = {};
     show("play"); renderCard(); keepAwake();
@@ -339,13 +513,25 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     $("problem").style.setProperty("--fs", digits >= 3 ? "clamp(72px, 22vw, 150px)" : "clamp(96px, 30vw, 180px)");
     $("card").classList.toggle("missed", !!missed[keyOf(c)]);
     $("card").setAttribute("aria-label", c[1] + (c[0] === "add" ? " plus " : c[0] === "sub" ? " minus " : " times ") + c[2]);
-    $("progress").textContent = (idx + 1) + " of " + deck.length;
-    var m = Object.keys(missed).length;
-    $("missCount").textContent = m ? m + " to redo" : "";
+    if (mode === "timed") {
+      $("card").removeAttribute("role");
+      $("card").setAttribute("tabindex", "-1");
+    } else {
+      $("card").setAttribute("role", "button");
+      $("card").setAttribute("tabindex", "0");
+    }
+    if (mode === "timed" && timed) {
+      $("progress").textContent = OPS[timed.op].title;
+      $("missCount").textContent = "";
+    } else {
+      $("progress").textContent = (idx + 1) + " of " + deck.length;
+      var m = Object.keys(missed).length;
+      $("missCount").textContent = m ? m + " to redo" : "";
+    }
   }
   var busy = false;
   function go(dir) {
-    if (busy) return;
+    if (busy || mode === "timed") return;
     var card = $("card");
     if (dir > 0 && idx >= deck.length - 1) { finish(); return; }
     if (dir < 0 && idx === 0) return;
@@ -363,6 +549,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   }
   function reduceMotion() { return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; }
   function toggleMiss() {
+    if (mode === "timed") return;
     var k = keyOf(deck[idx]);
     if (missed[k]) { delete missed[k]; renderCard(); return; }
     missed[k] = deck[idx];
@@ -387,13 +574,305 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       $("doneText").textContent = "Every card in this round was right.";
       $("retryBtn").style.display = "none";
     }
-    try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
+    releaseWake();
   }
 
-  // Tap / double-tap / swipe
+  // ---- 60-second round ----
+  // The clock is a timestamp (endAt). setTimeout only wakes the screen;
+  // hiding the app pauses the remaining time so a lock screen doesn't eat the round.
+  function stopTicking() {
+    if (timerHandle) { clearTimeout(timerHandle); timerHandle = null; }
+  }
+  function updateTimerDom(left) {
+    var sec = left <= 0 ? 0 : Math.ceil(left / 1000);
+    if (sec === shownSec) return;
+    shownSec = sec;
+    $("timerNum").textContent = String(sec);
+    $("timerNum").classList.toggle("low", sec > 0 && sec <= 10);
+    $("timerNum").setAttribute("aria-label", sec === 1 ? "1 second left" : sec + " seconds left");
+  }
+  function updateScore() {
+    if (!timed) return;
+    $("timerScore").textContent = timed.correct + " correct · " + timed.attempted + " tried";
+  }
+  function tick() {
+    timerHandle = null;
+    if (!timed || !timed.running || timed.finished) return;
+    var left = timed.endAt - Date.now();
+    if (left <= 0) {
+      updateTimerDom(0);
+      finishTimed();
+      return;
+    }
+    updateTimerDom(left);
+    var into = left % 1000;
+    var delay = (into === 0 ? 1000 : into) + 20;
+    timerHandle = setTimeout(tick, Math.min(delay, left));
+  }
+  function startTicking() {
+    stopTicking();
+    tick();
+  }
+  function startTimed() {
+    var op = state.tab;
+    var cards = buildDeck(op);
+    if (!cards.length) return;
+    mode = "timed";
+    stopTicking();
+    timed = {
+      op: op,
+      sets: state.sets[op].slice().sort(function (a, b) { return a - b; }),
+      zero: !!state.zero,
+      answers: !!state.answers,
+      shuffle: !!state.shuffle,
+      correct: 0,
+      attempted: 0,
+      remainingMs: ROUND_MS,
+      endAt: 0,
+      running: true,
+      finished: false
+    };
+    deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
+    idx = 0;
+    missed = {};
+    show("play");
+    showTimedChrome();
+    renderCard();
+    keepAwake();
+    timed.endAt = Date.now() + ROUND_MS;
+    timed.remainingMs = ROUND_MS;
+    startTicking();
+  }
+  function answerTimed(right) {
+    if (mode !== "timed" || !timed || !timed.running || timed.finished) return;
+    if (Date.now() >= timed.endAt) { finishTimed(); return; }
+    timed.attempted += 1;
+    if (right) timed.correct += 1;
+    updateScore();
+    idx += 1;
+    if (idx >= deck.length) {
+      var cards = buildDeck(timed.op);
+      if (!cards.length) return;
+      deck = timed.shuffle ? shuffle(cards.slice()) : cards.slice();
+      idx = 0;
+    }
+    renderCard();
+    var card = $("card");
+    card.classList.remove("pop");
+    void card.offsetWidth;
+    card.classList.add("pop");
+  }
+  function onBackground() {
+    if (!timed || timed.finished || !timed.running) return;
+    var left = Math.max(0, timed.endAt - Date.now());
+    if (left <= 0) { finishTimed(); return; }
+    timed.remainingMs = left;
+    timed.running = false;
+    stopTicking();
+  }
+  function onForeground() {
+    if (document.visibilityState === "hidden") return;
+    if ($("play").classList.contains("active")) keepAwake();
+    if (!timed || timed.finished || timed.running) return;
+    if (timed.remainingMs <= 0) { finishTimed(); return; }
+    timed.endAt = Date.now() + timed.remainingMs;
+    timed.running = true;
+    startTicking();
+  }
+  function sameSettings(a, b) {
+    return a.op === b.op && !!a.zero === !!b.zero && !!a.answers === !!b.answers && !!a.shuffle === !!b.shuffle
+      && a.sets.join(",") === b.sets.join(",");
+  }
+  function accuracyPct(r) {
+    if (!r.attempted) return 0;
+    return Math.round(r.correct * 100 / r.attempted);
+  }
+  function better(a, b) {
+    if (a.correct !== b.correct) return a.correct > b.correct;
+    return accuracyPct(a) > accuracyPct(b);
+  }
+  function validRound(r) {
+    return !!r && !!OPS[r.op] && Array.isArray(r.sets) && r.sets.every(function (n) { return typeof n === "number"; })
+      && typeof r.zero === "boolean" && typeof r.answers === "boolean" && typeof r.shuffle === "boolean"
+      && typeof r.correct === "number" && typeof r.attempted === "number" && typeof r.t === "number"
+      && r.correct >= 0 && r.attempted >= r.correct;
+  }
+  function loadRounds() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(TIMES_KEY) || "[]");
+      if (!Array.isArray(raw)) return [];
+      return raw.filter(validRound);
+    } catch (e) { return []; }
+  }
+  function persistRounds(list) {
+    var copy = list.slice();
+    while (copy.length) {
+      try {
+        localStorage.setItem(TIMES_KEY, JSON.stringify(copy));
+        return;
+      } catch (e) {
+        if (copy.length === 1) {
+          try { localStorage.removeItem(TIMES_KEY); } catch (e2) {}
+          return;
+        }
+        copy.splice(0, Math.ceil(copy.length / 2));
+      }
+    }
+  }
+  function recordRound(record) {
+    var rounds = loadRounds();
+    var prevBest = null;
+    rounds.forEach(function (r) {
+      if (sameSettings(r, record) && (!prevBest || better(r, prevBest))) prevBest = r;
+    });
+    var isNew = !prevBest || better(record, prevBest);
+    rounds.push(record);
+    persistRounds(rounds);
+    return { isNew: isNew, prevBest: prevBest };
+  }
+  function rangeText(op, sets) {
+    var nums = sets.slice().sort(function (a, b) { return a - b; });
+    var prefix = op === "sub" ? "\u2212" : op === "mul" ? "\u00d7" : "+";
+    var parts = [];
+    var i = 0;
+    while (i < nums.length) {
+      var start = nums[i], end = start;
+      while (i + 1 < nums.length && nums[i + 1] === end + 1) { i++; end = nums[i]; }
+      parts.push(start === end ? prefix + start : prefix + start + "\u2013" + prefix + end);
+      i++;
+    }
+    return parts.join(" ");
+  }
+  function settingsText(r) {
+    return [
+      OPS[r.op].title,
+      rangeText(r.op, r.sets),
+      r.zero ? "zeros included" : "no zeros",
+      r.answers ? "answers shown" : "answers hidden",
+      r.shuffle ? "shuffled" : "in order"
+    ].join(" · ");
+  }
+  function bestMessage(record, info) {
+    var name = OPS[record.op].name;
+    if (!info.prevBest) {
+      if (record.correct > 0) return "New best for these " + name + " cards!";
+      return "First saved round for these " + name + " cards.";
+    }
+    if (info.isNew) return "New best for these " + name + " cards!";
+    return "Not a new best. Your record for these " + name + " cards is " + info.prevBest.correct + " correct (" + accuracyPct(info.prevBest) + "%).";
+  }
+  function finishTimed() {
+    if (!timed || timed.finished) return;
+    timed.finished = true;
+    timed.running = false;
+    stopTicking();
+    updateTimerDom(0);
+    var record = {
+      t: Date.now(),
+      op: timed.op,
+      sets: timed.sets.slice(),
+      zero: timed.zero,
+      answers: timed.answers,
+      shuffle: timed.shuffle,
+      correct: timed.correct,
+      attempted: timed.attempted
+    };
+    var info = recordRound(record);
+    $("resultTitle").textContent = "Time's up!";
+    $("resultCorrect").textContent = String(record.correct);
+    $("resultCorrectLabel").textContent = "correct";
+    $("resultDetail").textContent = record.attempted + " tried · " + accuracyPct(record) + "% accuracy";
+    $("resultBest").textContent = bestMessage(record, info);
+    $("resultSettings").textContent = settingsText(record);
+    mode = "practice";
+    hideTimedChrome();
+    show("results");
+    releaseWake();
+    timed = null;
+    try { $("resultTitle").focus({ preventScroll: true }); } catch (e) { try { $("resultTitle").focus(); } catch (e2) {} }
+  }
+  function formatWhen(ts) {
+    try {
+      return new Date(ts).toLocaleString(undefined, {
+        weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+      });
+    } catch (e) {
+      return String(new Date(ts));
+    }
+  }
+  function personalBests(rounds) {
+    var out = {};
+    rounds.forEach(function (r) {
+      if (!out[r.op] || better(r, out[r.op])) out[r.op] = r;
+    });
+    return out;
+  }
+  function renderHistory() {
+    var rounds = loadRounds().sort(function (a, b) { return b.t - a.t; });
+    var bests = personalBests(rounds);
+    var bestsEl = $("bests");
+    bestsEl.innerHTML = "";
+    ["add", "sub", "mul"].forEach(function (op) {
+      var box = document.createElement("div");
+      box.className = "best";
+      var title = document.createElement("b");
+      title.textContent = OPS[op].title + " best";
+      var detail = document.createElement("span");
+      var best = bests[op];
+      detail.textContent = best
+        ? best.correct + " correct · " + accuracyPct(best) + "% · " + rangeText(best.op, best.sets) + " · " + (best.zero ? "zeros included" : "no zeros") + " · " + (best.answers ? "answers shown" : "answers hidden")
+        : "No rounds yet";
+      box.appendChild(title);
+      box.appendChild(detail);
+      bestsEl.appendChild(box);
+    });
+    var list = $("historyList");
+    list.innerHTML = "";
+    if (!rounds.length) {
+      var empty = document.createElement("p");
+      empty.className = "history-empty";
+      empty.textContent = "No timed rounds yet. Play a 60-second round and the score will show up here.";
+      list.appendChild(empty);
+    }
+    rounds.forEach(function (r) {
+      var row = document.createElement("div");
+      row.className = "round";
+      var when = document.createElement("div");
+      when.className = "when";
+      when.textContent = formatWhen(r.t);
+      if (bests[r.op] === r) {
+        var tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = "Best";
+        when.appendChild(tag);
+      }
+      var score = document.createElement("div");
+      score.className = "scoreline";
+      score.textContent = r.correct + " correct / " + r.attempted + " tried · " + accuracyPct(r) + "%";
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = settingsText(r);
+      row.appendChild(when);
+      row.appendChild(score);
+      row.appendChild(meta);
+      list.appendChild(row);
+    });
+    $("clearHistory").disabled = rounds.length === 0;
+  }
+  function openHistory(from) {
+    historyReturn = from || "setup";
+    renderHistory();
+    show("history");
+  }
+
+  // Tap / double-tap / swipe (practice only)
   var stage = $("stage"), lastTap = 0, tapTimer = null, sx = 0, sy = 0, st = 0;
-  stage.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; st = Date.now(); });
+  stage.addEventListener("pointerdown", function (e) {
+    if (mode === "timed") return;
+    sx = e.clientX; sy = e.clientY; st = Date.now();
+  });
   stage.addEventListener("pointerup", function (e) {
+    if (mode === "timed") return;
     var dx = e.clientX - sx, dy = e.clientY - sy;
     if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
       clearTimeout(tapTimer); tapTimer = null;
@@ -412,17 +891,57 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   stage.addEventListener("dblclick", function (e) { e.preventDefault(); });
   document.addEventListener("keydown", function (e) {
     if (!$("play").classList.contains("active")) return;
+    if (mode === "timed") {
+      if (e.repeat) return;
+      if (e.key === "Enter" || e.key === "ArrowRight") { e.preventDefault(); answerTimed(true); }
+      else if (e.key === "x" || e.key === "Backspace") { e.preventDefault(); answerTimed(false); }
+      return;
+    }
     if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); go(1); }
     else if (e.key === "ArrowLeft") go(-1);
     else if (e.key === "x" || e.key === "Backspace") toggleMiss();
   });
 
+  $("rightBtn").onclick = function () { answerTimed(true); };
+  $("wrongBtn").onclick = function () { answerTimed(false); };
   $("startBtn").onclick = function () { startRound(buildDeck()); };
-  $("quitBtn").onclick = function () { show("setup"); renderSetup(); };
+  $("timedBtn").onclick = function () { startTimed(); };
+  $("quitBtn").onclick = function () {
+    if (mode === "timed") {
+      if (timed) { timed.running = false; timed.finished = true; }
+      timed = null;
+      mode = "practice";
+      stopTicking();
+      hideTimedChrome();
+      releaseWake();
+    }
+    show("setup");
+    renderSetup();
+  };
   $("againBtn").onclick = function () { show("setup"); renderSetup(); };
+  $("resultAgain").onclick = function () { startTimed(); };
+  $("resultHome").onclick = function () { show("setup"); renderSetup(); };
+  $("resultHistory").onclick = function () { openHistory("results"); };
+  $("openHistory").onclick = function () { openHistory("setup"); };
+  $("historyBack").onclick = function () {
+    if (historyReturn === "results") show("results");
+    else { show("setup"); renderSetup(); }
+  };
+  $("clearHistory").onclick = function () {
+    var rounds = loadRounds();
+    if (!rounds.length) return;
+    if (!confirm("Clear all saved times? This cannot be undone.")) return;
+    try { localStorage.removeItem(TIMES_KEY); } catch (e) {}
+    renderHistory();
+  };
   document.addEventListener("visibilitychange", function () {
-    if (document.visibilityState === "visible" && $("play").classList.contains("active")) keepAwake();
+    if (document.visibilityState === "hidden") onBackground();
+    else onForeground();
   });
+  window.addEventListener("pagehide", onBackground);
+  window.addEventListener("pageshow", onForeground);
+  document.addEventListener("freeze", onBackground);
+  document.addEventListener("resume", onForeground);
 
   renderChips();
   renderSetup();
