@@ -193,6 +193,11 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 .problem .bar { grid-column: 1 / -1; height: .07em; background: var(--ink); border-radius: .04em; margin: .1em 0 .12em; }
 .problem .ans { grid-column: 1 / -1; text-align: right; color: var(--soft); min-height: 1em; }
 .problem .ans.hidden { visibility: hidden; }
+.problem .ans.big {
+  visibility: visible;
+  color: #0E6B45;
+  background: linear-gradient(#0E6B45, #0E6B45) center bottom / 100% 0.07em no-repeat;
+}
 .stamp {
   position: absolute; top: 22px; right: 18px;
   border: 4px solid var(--miss); color: var(--miss); border-radius: 12px;
@@ -217,6 +222,19 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 .judge.miss { background: rgba(255,255,255,.16); }
 .judge.ok { background: var(--chip-on); color: var(--chip-on-ink); }
 .judge:active { transform: scale(.98); }
+.judge:disabled { opacity: .35; }
+.fact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.fact {
+  min-height: 56px; border-radius: 16px; font-size: 1.05rem; font-weight: 700;
+  box-shadow: inset 0 0 0 3px rgba(255,255,255,.92); padding: 10px 6px;
+}
+.fact:disabled { opacity: .45; }
+.fact:active { transform: scale(.98); }
+@media (min-width: 700px) {
+  .fact-row { grid-template-columns: repeat(4, 1fr); }
+  #setup, #history { max-width: 720px; }
+  .card { max-width: 640px; }
+}
 
 /* Done */
 #done, #results { align-items: center; justify-content: center; text-align: center; padding: 24px; overflow-y: auto; }
@@ -273,7 +291,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       <h1>Math flashcards</h1>
       <button id="openHistory" type="button">My times</button>
     </div>
-    <p class="lead">Pick the facts to practice. You can mix sets from all three. Tap the card to flip to the next one, double‑tap when it’s a miss.</p>
+    <p class="lead">Pick the facts to practice. You can mix sets from all three. Say the answer, tap the card to check it, then mark Got it or Missed.</p>
 
     <div class="ops" role="tablist" id="ops">
       <button class="op" role="tab" data-op="add" type="button">Add<small></small></button>
@@ -303,6 +321,12 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       <button class="start" id="startBtn" type="button">Start</button>
       <div class="count" id="countLabel"></div>
       <button class="start timed-start" id="timedBtn" type="button">60-second round<small id="timedHint"></small></button>
+      <div class="fact-row" id="factRow">
+        <button class="fact" type="button" data-n="24">24 facts</button>
+        <button class="fact" type="button" data-n="30">30 facts</button>
+        <button class="fact" type="button" data-n="40">40 facts</button>
+        <button class="fact" type="button" data-n="50">50 facts</button>
+      </div>
     </div>
   </div>
 </section>
@@ -314,7 +338,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   </div>
   <div class="timer-bar" id="timerBar" hidden>
     <div class="timer-num" id="timerNum" role="timer" aria-label="60 seconds left">60</div>
-    <div class="timer-caption">seconds left</div>
+    <div class="timer-caption" id="timerCaption">seconds left</div>
     <div class="timer-score" id="timerScore" aria-live="polite">0 correct · 0 tried</div>
   </div>
   <div class="stage" id="stage">
@@ -323,7 +347,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       <div class="stamp">Again</div>
     </div>
   </div>
-  <div class="hint" id="hint">Tap for next · Double‑tap if it was wrong · Swipe right to go back</div>
+  <div class="hint" id="hint">Say the answer out loud, then tap the card</div>
   <div class="timed-actions" id="timedActions" hidden role="group" aria-label="Mark this card">
     <button class="judge miss" id="wrongBtn" type="button">Missed</button>
     <button class="judge ok" id="rightBtn" type="button">Got it</button>
@@ -346,6 +370,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   <p id="resultDetail"></p>
   <p id="resultBest"></p>
   <p id="resultSettings"></p>
+  <div class="retry-list" id="resultMissed"></div>
+  <button class="start" id="practiceMissed" type="button" hidden>Practice missed</button>
   <button class="start" id="resultAgain" type="button">Another 60 seconds</button>
   <button class="ghost" id="resultHistory" type="button">My times</button>
   <button class="ghost" id="resultHome" type="button">Back to sets</button>
@@ -453,14 +479,23 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     $("timedHint").textContent = tn
       ? OPS[state.tab].title + " sets on this tab · " + tn + " cards"
       : "Pick a " + OPS[state.tab].name + " set on this tab";
+    document.querySelectorAll(".fact").forEach(function (b) {
+      b.disabled = n === 0;
+    });
   }
 
   // ---- Play ----
   var deck = [], idx = 0, missed = {}, wakeLock = null;
   var mode = "practice";
   var timed = null;
+  var review = null;
+  var reviewFrom = "results";
+  var revealed = false;
+  var lastMissed = [];
+  var again = { kind: "60s" };
   var timerHandle = null;
   var shownSec = -1;
+  var shownTimer = "";
   var historyReturn = "setup";
 
   function shuffle(a) {
@@ -476,60 +511,96 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   function releaseWake() {
     try { if (wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) {}
   }
-  function hideTimedChrome() {
+  function hidePlayChrome() {
     $("play").classList.remove("timed");
     $("timerBar").hidden = true;
     $("timedActions").hidden = true;
+  }
+  function showPracticeChrome() {
+    $("play").classList.remove("timed");
+    $("timerBar").hidden = true;
+    $("timedActions").hidden = false;
     $("hint").hidden = false;
     $("quitBtn").textContent = "Done";
+    updateMarkState();
   }
   function showTimedChrome() {
     $("play").classList.add("timed");
     $("timerBar").hidden = false;
     $("timedActions").hidden = false;
-    $("hint").hidden = true;
+    $("hint").hidden = false;
     $("quitBtn").textContent = "Stop";
     shownSec = -1;
-    updateTimerDom(timed ? timed.remainingMs : ROUND_MS);
+    shownTimer = "";
+    var facts = timed && timed.kind === "facts";
+    $("timerCaption").textContent = facts ? "seconds" : "seconds left";
+    if (facts) updateStopwatch();
+    else updateTimerDom(timed ? timed.remainingMs : ROUND_MS);
     updateScore();
+    updateMarkState();
+  }
+  function answerReady() { return state.answers || revealed; }
+  function updateMarkState() {
+    var ready = answerReady();
+    $("rightBtn").disabled = !ready;
+    $("wrongBtn").disabled = !ready;
+    $("hint").hidden = false;
+    $("hint").textContent = ready
+      ? "Got it if you were right · Missed if you were not"
+      : "Say the answer out loud, then tap the card";
   }
   function startRound(cards) {
     mode = "practice";
+    review = null;
     if (timed) { timed.running = false; timed.finished = true; }
     timed = null;
     stopTicking();
-    hideTimedChrome();
     deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
     idx = 0; missed = {};
-    show("play"); renderCard(); keepAwake();
+    revealed = !!state.answers;
+    show("play");
+    showPracticeChrome();
+    renderCard();
+    keepAwake();
   }
   function keyOf(c) { return c[0] + ":" + c[1] + ":" + c[2]; }
   function renderCard() {
     var c = deck[idx];
+    if (!c) return;
+    var showNow = state.answers || revealed;
+    var ansClass = "ans" + (showNow ? (state.answers ? "" : " big") : " hidden");
     $("problem").innerHTML =
       '<span></span><span class="n">' + c[1] + '</span>' +
       '<span class="plus">' + OPS[c[0]].sym + '</span><span class="n">' + c[2] + '</span>' +
       '<div class="bar"></div>' +
-      '<div class="ans' + (state.answers ? '' : ' hidden') + '">' + c[3] + '</div>';
+      '<div class="' + ansClass + '"' + (showNow ? "" : ' aria-hidden="true"') + '>' + c[3] + '</div>';
     var digits = Math.max(String(c[1]).length, String(c[3]).length);
     $("problem").style.setProperty("--fs", digits >= 3 ? "clamp(72px, 22vw, 150px)" : "clamp(96px, 30vw, 180px)");
-    $("card").classList.toggle("missed", !!missed[keyOf(c)]);
-    $("card").setAttribute("aria-label", c[1] + (c[0] === "add" ? " plus " : c[0] === "sub" ? " minus " : " times ") + c[2]);
-    if (mode === "timed") {
-      $("card").removeAttribute("role");
-      $("card").setAttribute("tabindex", "-1");
-    } else {
-      $("card").setAttribute("role", "button");
-      $("card").setAttribute("tabindex", "0");
-    }
-    if (mode === "timed" && timed) {
-      $("progress").textContent = OPS[timed.op].title;
+    $("card").classList.toggle("missed", mode === "practice" && !!missed[keyOf(c)]);
+    var spoken = c[1] + (c[0] === "add" ? " plus " : c[0] === "sub" ? " minus " : " times ") + c[2];
+    $("card").setAttribute("role", "button");
+    $("card").setAttribute("tabindex", "0");
+    $("card").setAttribute("aria-label", showNow ? spoken + " is " + c[3] : "Tap to show the answer. " + spoken);
+    if (mode === "review" && review) {
+      var left = review.queue.length;
+      $("progress").textContent = left + (left === 1 ? " fact left" : " facts left");
+      $("missCount").textContent = "";
+    } else if (mode === "timed" && timed) {
+      $("progress").textContent = timed.kind === "facts"
+        ? Math.min(timed.attempted + 1, timed.factTarget) + " of " + timed.factTarget
+        : (timed.op === "mix" ? "Mixed" : OPS[timed.op].title);
       $("missCount").textContent = "";
     } else {
       $("progress").textContent = (idx + 1) + " of " + deck.length;
       var m = Object.keys(missed).length;
       $("missCount").textContent = m ? m + " to redo" : "";
     }
+    updateMarkState();
+  }
+  function revealAnswer() {
+    if (answerReady()) return;
+    revealed = true;
+    renderCard();
   }
   var busy = false;
   function go(dir) {
@@ -550,14 +621,17 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     }, reduceMotion() ? 0 : 200);
   }
   function reduceMotion() { return window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches; }
-  function toggleMiss() {
-    if (mode === "timed") return;
-    var k = keyOf(deck[idx]);
-    if (missed[k]) { delete missed[k]; renderCard(); return; }
-    missed[k] = deck[idx];
+  function markPractice(right) {
+    if (mode !== "practice" || !answerReady() || busy) return;
+    var c = deck[idx];
+    var k = keyOf(c);
+    if (right) delete missed[k];
+    else missed[k] = c;
+    if (!right && navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
+    if (idx >= deck.length - 1) { finish(); return; }
+    idx += 1;
+    revealed = !!state.answers;
     renderCard();
-    if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
-    setTimeout(function () { go(1); }, 550);
   }
   function finish() {
     var list = Object.keys(missed).map(function (k) { return missed[k]; });
@@ -569,7 +643,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       $("doneText").textContent = list.length === 1 ? "1 card to try again:" : list.length + " cards to try again:";
       list.forEach(function (c) { var s = document.createElement("span"); s.textContent = c[1] + " " + OPS[c[0]].sym + " " + c[2]; rl.appendChild(s); });
       $("retryBtn").style.display = "";
-      $("retryBtn").onclick = function () { startRound(list); };
+      $("retryBtn").onclick = function () { startReview(list, "done"); };
     } else {
       $("doneEmoji").textContent = "🎉";
       $("doneTitle").textContent = "All correct!";
@@ -595,11 +669,31 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   }
   function updateScore() {
     if (!timed) return;
-    $("timerScore").textContent = timed.correct + " correct · " + timed.attempted + " tried";
+    $("timerScore").textContent = timed.kind === "facts"
+      ? timed.correct + " correct · " + timed.attempted + " of " + timed.factTarget
+      : timed.correct + " correct · " + timed.attempted + " tried";
+  }
+  function factElapsedMs() {
+    var ms = timed.elapsedMs + (timed.running ? Date.now() - timed.resumedAt : 0);
+    return ms < 0 ? 0 : ms;
+  }
+  function factElapsedSeconds() { return Math.round(factElapsedMs() / 100) / 10; }
+  function updateStopwatch() {
+    var label = formatSeconds(factElapsedSeconds());
+    if (label === shownTimer) return;
+    shownTimer = label;
+    $("timerNum").textContent = label;
+    $("timerNum").classList.remove("low");
+    $("timerNum").setAttribute("aria-label", label + " seconds");
   }
   function tick() {
     timerHandle = null;
     if (!timed || !timed.running || timed.finished) return;
+    if (timed.kind === "facts") {
+      updateStopwatch();
+      timerHandle = setTimeout(tick, 100);
+      return;
+    }
     var left = timed.endAt - Date.now();
     if (left <= 0) {
       finishTimed(false);
@@ -614,15 +708,26 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     stopTicking();
     tick();
   }
-  function startTimed() {
-    var op = state.tab;
-    var cards = buildDeck(op);
-    if (!cards.length) return;
+  function selectedOps() {
+    return ["add", "sub", "mul"].filter(function (o) { return state.sets[o].length; });
+  }
+  function copyOps() {
+    return {
+      add: state.sets.add.slice().sort(function (a, b) { return a - b; }),
+      sub: state.sets.sub.slice().sort(function (a, b) { return a - b; }),
+      mul: state.sets.mul.slice().sort(function (a, b) { return a - b; })
+    };
+  }
+  function beginTimed(cards, fields) {
     mode = "timed";
+    review = null;
     stopTicking();
-    timed = {
-      op: op,
-      sets: state.sets[op].slice().sort(function (a, b) { return a - b; }),
+    timed = Object.assign({
+      kind: "60s",
+      factTarget: 0,
+      op: state.tab,
+      ops: null,
+      sets: [],
       zero: !!state.zero,
       answers: !!state.answers,
       shuffle: !!state.shuffle,
@@ -630,37 +735,104 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       attempted: 0,
       remainingMs: ROUND_MS,
       endAt: 0,
+      elapsedMs: 0,
+      resumedAt: 0,
       running: true,
       finished: false,
-      total: cards.length
-    };
+      total: cards.length,
+      pool: cards.slice(),
+      missed: [],
+      missedKeys: {}
+    }, fields);
+    if (timed.kind === "facts") {
+      timed.elapsedMs = 0;
+      timed.resumedAt = Date.now();
+    } else {
+      timed.endAt = Date.now() + ROUND_MS;
+      timed.remainingMs = ROUND_MS;
+    }
     deck = state.shuffle ? shuffle(cards.slice()) : cards.slice();
     idx = 0;
     missed = {};
+    revealed = !!state.answers;
     show("play");
     showTimedChrome();
     renderCard();
     keepAwake();
-    timed.endAt = Date.now() + ROUND_MS;
-    timed.remainingMs = ROUND_MS;
     startTicking();
   }
-  function answerTimed(right) {
-    if (mode !== "timed" || !timed || !timed.running || timed.finished) return;
-    if (Date.now() >= timed.endAt) { finishTimed(false); return; }
-    timed.attempted += 1;
-    if (right) timed.correct += 1;
-    updateScore();
-    if (timed.attempted >= timed.total) { finishTimed(true); return; }
-    idx += 1;
-    renderCard();
+  function startTimed() {
+    var op = state.tab;
+    var cards = buildDeck(op);
+    if (!cards.length) return;
+    again = { kind: "60s" };
+    beginTimed(cards, {
+      kind: "60s",
+      op: op,
+      sets: state.sets[op].slice().sort(function (a, b) { return a - b; }),
+      total: cards.length
+    });
+  }
+  function startFacts(n) {
+    var cards = buildDeck();
+    if (!cards.length) return;
+    var ops = selectedOps();
+    var single = ops.length === 1;
+    again = { kind: "facts", n: n };
+    beginTimed(cards, {
+      kind: "facts",
+      factTarget: n,
+      total: n,
+      op: single ? ops[0] : "mix",
+      ops: copyOps(),
+      sets: single ? state.sets[ops[0]].slice().sort(function (a, b) { return a - b; }) : []
+    });
+  }
+  function refillDeck(prev) {
+    var cards = timed.pool.slice();
+    deck = timed.shuffle ? shuffle(cards) : cards.slice();
+    if (timed.shuffle && deck.length > 1 && prev && keyOf(deck[0]) === keyOf(prev)) {
+      var swap = deck[0]; deck[0] = deck[1]; deck[1] = swap;
+    }
+    idx = 0;
+  }
+  function rememberMiss(card) {
+    var k = keyOf(card);
+    if (timed.missedKeys[k]) return;
+    timed.missedKeys[k] = true;
+    timed.missed.push(card.slice());
+  }
+  function popCard() {
     var card = $("card");
     card.classList.remove("pop");
     void card.offsetWidth;
     card.classList.add("pop");
   }
+  function answerTimed(right) {
+    if (mode !== "timed" || !timed || !timed.running || timed.finished) return;
+    if (!answerReady()) return;
+    if (timed.kind !== "facts" && Date.now() >= timed.endAt) { finishTimed(false); return; }
+    var card = deck[idx];
+    timed.attempted += 1;
+    if (right) timed.correct += 1;
+    else rememberMiss(card);
+    updateScore();
+    var goal = timed.kind === "facts" ? timed.factTarget : timed.total;
+    if (timed.attempted >= goal) { finishTimed(true); return; }
+    if (timed.kind === "facts" && idx >= deck.length - 1) refillDeck(card);
+    else idx += 1;
+    revealed = !!state.answers;
+    renderCard();
+    popCard();
+  }
   function onBackground() {
     if (!timed || timed.finished || !timed.running) return;
+    if (timed.kind === "facts") {
+      timed.elapsedMs = factElapsedMs();
+      timed.running = false;
+      stopTicking();
+      return;
+    }
     var left = Math.max(0, timed.endAt - Date.now());
     if (left <= 0) { finishTimed(false); return; }
     timed.remainingMs = left;
@@ -671,14 +843,72 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (document.visibilityState === "hidden") return;
     if ($("play").classList.contains("active")) keepAwake();
     if (!timed || timed.finished || timed.running) return;
+    if (timed.kind === "facts") {
+      timed.resumedAt = Date.now();
+      timed.running = true;
+      startTicking();
+      return;
+    }
     if (timed.remainingMs <= 0) { finishTimed(false); return; }
     timed.endAt = Date.now() + timed.remainingMs;
     timed.running = true;
     startTicking();
   }
-  function sameSettings(a, b) {
-    return a.op === b.op && !!a.zero === !!b.zero && !!a.answers === !!b.answers && !!a.shuffle === !!b.shuffle
-      && a.sets.join(",") === b.sets.join(",");
+  function startReview(cards, from) {
+    var uniq = [];
+    var seen = {};
+    cards.forEach(function (c) {
+      var k = keyOf(c);
+      if (seen[k]) return;
+      seen[k] = true;
+      uniq.push(c.slice());
+    });
+    if (!uniq.length) return;
+    if (timed && timed.running) { timed.running = false; stopTicking(); }
+    mode = "review";
+    reviewFrom = from || "results";
+    review = { queue: uniq };
+    deck = review.queue;
+    idx = 0;
+    missed = {};
+    revealed = !!state.answers;
+    show("play");
+    showPracticeChrome();
+    renderCard();
+    keepAwake();
+  }
+  function markReview(right) {
+    if (mode !== "review" || !review || !answerReady()) return;
+    var card = review.queue[0];
+    review.queue.shift();
+    if (!right) review.queue.push(card);
+    if (!review.queue.length) {
+      review = null;
+      mode = "practice";
+      hidePlayChrome();
+      show("done");
+      $("doneEmoji").textContent = "🎉";
+      $("doneTitle").textContent = "All fixed!";
+      $("doneText").textContent = "Every missed fact was marked Got it. This practice is not saved in My times.";
+      $("retryList").innerHTML = "";
+      $("retryBtn").style.display = "none";
+      releaseWake();
+      return;
+    }
+    deck = review.queue;
+    idx = 0;
+    revealed = !!state.answers;
+    renderCard();
+    popCard();
+  }
+  function roundMode(r) {
+    var m = r && r.mode;
+    if (m === "24" || m === "30" || m === "40" || m === "50") return m;
+    return "60s";
+  }
+  function modeLabel(r) {
+    var m = roundMode(r);
+    return m === "60s" ? "60s" : m + " facts";
   }
   function accuracyPct(r) {
     if (!r.attempted) return 0;
@@ -697,6 +927,10 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     return Math.round(ms / 100) / 10;
   }
   function better(a, b) {
+    if (roundMode(a) !== "60s" || roundMode(b) !== "60s") {
+      if (a.correct !== b.correct) return a.correct > b.correct;
+      return roundElapsed(a) < roundElapsed(b);
+    }
     var ac = roundCompleted(a), bc = roundCompleted(b);
     if (ac !== bc) return ac;
     if (ac) {
@@ -707,10 +941,16 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     return accuracyPct(a) > accuracyPct(b);
   }
   function validRound(r) {
-    return !!r && !!OPS[r.op] && Array.isArray(r.sets) && r.sets.every(function (n) { return typeof n === "number"; })
-      && typeof r.zero === "boolean" && typeof r.answers === "boolean" && typeof r.shuffle === "boolean"
-      && typeof r.correct === "number" && typeof r.attempted === "number" && typeof r.t === "number"
-      && r.correct >= 0 && r.attempted >= r.correct;
+    if (!r || typeof r.correct !== "number" || typeof r.attempted !== "number" || typeof r.t !== "number") return false;
+    if (r.correct < 0 || r.attempted < r.correct) return false;
+    if (typeof r.zero !== "boolean" || typeof r.answers !== "boolean" || typeof r.shuffle !== "boolean") return false;
+    if (r.op === "mix") {
+      if (roundMode(r) === "60s" || !r.ops) return false;
+      return ["add", "sub", "mul"].some(function (o) {
+        return Array.isArray(r.ops[o]) && r.ops[o].every(function (n) { return typeof n === "number"; });
+      });
+    }
+    return !!OPS[r.op] && Array.isArray(r.sets) && r.sets.every(function (n) { return typeof n === "number"; });
   }
   function loadRounds() {
     try {
@@ -738,7 +978,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     var rounds = loadRounds();
     var prevBest = null;
     rounds.forEach(function (r) {
-      if (sameSettings(r, record) && (!prevBest || better(r, prevBest))) prevBest = r;
+      if (settingsKey(r) === settingsKey(record) && (!prevBest || better(r, prevBest))) prevBest = r;
     });
     var isNew = !prevBest || better(record, prevBest);
     rounds.push(record);
@@ -758,10 +998,23 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     }
     return parts.join(" ");
   }
+  function opTitle(r) {
+    if (r.op === "mix" && r.ops) {
+      return ["add", "sub", "mul"].filter(function (o) { return r.ops[o] && r.ops[o].length; }).map(function (o) { return OPS[o].title; }).join(" + ");
+    }
+    return OPS[r.op] ? OPS[r.op].title : "Mixed";
+  }
+  function rangeFor(r) {
+    if (r.op === "mix" && r.ops) {
+      return ["add", "sub", "mul"].filter(function (o) { return r.ops[o] && r.ops[o].length; }).map(function (o) { return rangeText(o, r.ops[o]); }).join(" ");
+    }
+    return rangeText(r.op, r.sets || []);
+  }
   function settingsText(r) {
     return [
-      OPS[r.op].title,
-      rangeText(r.op, r.sets),
+      modeLabel(r),
+      opTitle(r),
+      rangeFor(r),
       r.zero ? "zeros included" : "no zeros",
       r.answers ? "answers shown" : "answers hidden",
       r.shuffle ? "shuffled" : "in order"
@@ -772,7 +1025,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     return r.correct + " correct (" + accuracyPct(r) + "%)";
   }
   function bestMessage(record, info) {
-    var name = OPS[record.op].name;
+    var name = record.op === "mix" ? "mixed" : OPS[record.op].name;
     if (!info.prevBest) {
       if (record.correct > 0 || roundCompleted(record)) return "New best for these " + name + " cards!";
       return "First saved round for these " + name + " cards.";
@@ -780,37 +1033,56 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (info.isNew) return "New best for these " + name + " cards!";
     return "Not a new best. Your record for these " + name + " cards is " + recordPhrase(info.prevBest) + ".";
   }
+  function showMissedFacts(cards) {
+    var box = $("resultMissed");
+    box.innerHTML = "";
+    lastMissed = cards.map(function (c) { return c.slice(); });
+    cards.forEach(function (c) {
+      var s = document.createElement("span");
+      s.textContent = c[1] + " " + OPS[c[0]].sym + " " + c[2];
+      box.appendChild(s);
+    });
+    $("practiceMissed").hidden = cards.length === 0;
+  }
   function finishTimed(completed) {
     if (!timed || timed.finished) return;
     var done = completed === true;
+    var isFacts = timed.kind === "facts";
+    var elapsedSnap = isFacts ? factElapsedSeconds() : (done ? elapsedNow() : 60);
     timed.finished = true;
     timed.running = false;
     stopTicking();
-    if (!done) updateTimerDom(0);
+    if (!done && !isFacts) updateTimerDom(0);
     var record = {
       t: Date.now(),
       op: timed.op,
-      sets: timed.sets.slice(),
+      sets: (timed.sets || []).slice(),
       zero: timed.zero,
       answers: timed.answers,
       shuffle: timed.shuffle,
       correct: timed.correct,
       attempted: timed.attempted,
-      elapsed: done ? elapsedNow() : 60,
-      completed: done
+      elapsed: elapsedSnap,
+      completed: isFacts ? true : done,
+      mode: isFacts ? String(timed.factTarget) : "60s"
     };
+    if (timed.op === "mix") record.ops = timed.ops;
+    var missedCards = timed.missed.slice();
     var info = recordRound(record);
-    $("resultTitle").classList.toggle("finish-line", done);
-    $("resultTitle").textContent = done
-      ? "Finished all " + timed.total + " cards in " + formatSeconds(record.elapsed) + " s"
-      : "Time's up!";
+    var headline = isFacts
+      ? timed.factTarget + " facts in " + formatSeconds(record.elapsed) + " s"
+      : (done ? "Finished all " + timed.total + " cards in " + formatSeconds(record.elapsed) + " s" : "Time's up!");
+    $("resultTitle").classList.toggle("finish-line", done || isFacts);
+    $("resultTitle").textContent = headline;
     $("resultCorrect").textContent = String(record.correct);
     $("resultCorrectLabel").textContent = "correct";
     $("resultDetail").textContent = record.attempted + " tried · " + accuracyPct(record) + "% accuracy";
     $("resultBest").textContent = bestMessage(record, info);
     $("resultSettings").textContent = settingsText(record);
+    $("resultAgain").textContent = isFacts ? "Another " + timed.factTarget + " facts" : "Another 60 seconds";
+    showMissedFacts(missedCards);
     mode = "practice";
-    hideTimedChrome();
+    hidePlayChrome();
     show("results");
     releaseWake();
     timed = null;
@@ -826,13 +1098,17 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     }
   }
   function settingsKey(r) {
-    return [r.op, r.sets.slice().sort(function (a, b) { return a - b; }).join(","), r.zero ? 1 : 0, r.answers ? 1 : 0, r.shuffle ? 1 : 0].join("|");
+    var setsPart = r.op === "mix" && r.ops
+      ? ["add", "sub", "mul"].map(function (o) { return o + ":" + ((r.ops[o] || []).slice().sort(function (a, b) { return a - b; }).join(",")); }).join(";")
+      : (r.sets || []).slice().sort(function (a, b) { return a - b; }).join(",");
+    return [roundMode(r), r.op, setsPart, r.zero ? 1 : 0, r.answers ? 1 : 0, r.shuffle ? 1 : 0].join("|");
   }
   function bestDetail(best) {
-    var parts = [];
-    if (roundCompleted(best)) parts.push("Finished " + best.attempted + " cards in " + formatSeconds(roundElapsed(best)) + " s");
+    var parts = [modeLabel(best)];
+    if (roundMode(best) !== "60s") parts.push(best.correct + " correct in " + formatSeconds(roundElapsed(best)) + " s");
+    else if (roundCompleted(best)) parts.push("Finished " + best.attempted + " cards in " + formatSeconds(roundElapsed(best)) + " s");
     parts.push(best.correct + " correct · " + accuracyPct(best) + "%");
-    parts.push(rangeText(best.op, best.sets));
+    parts.push(rangeFor(best));
     parts.push(best.zero ? "zeros included" : "no zeros");
     parts.push(best.answers ? "answers shown" : "answers hidden");
     return parts.join(" · ");
@@ -846,11 +1122,12 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     });
     var bestsEl = $("bests");
     bestsEl.innerHTML = "";
-    ["add", "sub", "mul"].forEach(function (op) {
+    var opOrder = ["add", "sub", "mul"].concat(rounds.some(function (r) { return r.op === "mix"; }) ? ["mix"] : []);
+    opOrder.forEach(function (op) {
       var box = document.createElement("div");
       box.className = "best";
       var title = document.createElement("b");
-      title.textContent = OPS[op].title + " best";
+      title.textContent = (op === "mix" ? "Mixed" : OPS[op].title) + " best";
       box.appendChild(title);
       var lines = Object.keys(groups).filter(function (k) { return groups[k].op === op; });
       lines.sort();
@@ -871,7 +1148,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     if (!rounds.length) {
       var empty = document.createElement("p");
       empty.className = "history-empty";
-      empty.textContent = "No timed rounds yet. Play a 60-second round and the score will show up here.";
+      empty.textContent = "No rounds yet. Play a 60-second round or a set number of facts and the score will show up here.";
       list.appendChild(empty);
     }
     rounds.forEach(function (r) {
@@ -907,61 +1184,63 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     show("history");
   }
 
-  // Tap / double-tap / swipe (practice only)
-  var stage = $("stage"), lastTap = 0, tapTimer = null, sx = 0, sy = 0, st = 0;
-  stage.addEventListener("pointerdown", function (e) {
-    if (mode === "timed") return;
-    sx = e.clientX; sy = e.clientY; st = Date.now();
-  });
+  function markCurrent(right) {
+    if (mode === "review") markReview(right);
+    else if (mode === "timed") answerTimed(right);
+    else markPractice(right);
+  }
+  var stage = $("stage"), sx = 0, sy = 0;
+  stage.addEventListener("pointerdown", function (e) { sx = e.clientX; sy = e.clientY; });
   stage.addEventListener("pointerup", function (e) {
-    if (mode === "timed") return;
     var dx = e.clientX - sx, dy = e.clientY - sy;
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-      clearTimeout(tapTimer); tapTimer = null;
-      go(dx > 0 ? -1 : 1); return;
-    }
     if (Math.abs(dx) > 12 || Math.abs(dy) > 12) return;
-    var now = Date.now();
-    if (tapTimer && now - lastTap < 300) {
-      clearTimeout(tapTimer); tapTimer = null; lastTap = 0;
-      toggleMiss();
-    } else {
-      lastTap = now;
-      tapTimer = setTimeout(function () { tapTimer = null; go(1); }, 300);
-    }
+    revealAnswer();
   });
   stage.addEventListener("dblclick", function (e) { e.preventDefault(); });
   document.addEventListener("keydown", function (e) {
-    if (!$("play").classList.contains("active")) return;
-    if (mode === "timed") {
-      if (e.repeat) return;
-      if (e.key === "Enter" || e.key === "ArrowRight") { e.preventDefault(); answerTimed(true); }
-      else if (e.key === "x" || e.key === "Backspace") { e.preventDefault(); answerTimed(false); }
+    if (!$("play").classList.contains("active") || e.repeat) return;
+    if (!answerReady()) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); revealAnswer(); }
       return;
     }
-    if (e.key === "ArrowRight" || e.key === " " || e.key === "Enter") { e.preventDefault(); go(1); }
-    else if (e.key === "ArrowLeft") go(-1);
-    else if (e.key === "x" || e.key === "Backspace") toggleMiss();
+    if (e.key === "Enter" || e.key === "ArrowRight") { e.preventDefault(); markCurrent(true); }
+    else if (e.key === "x" || e.key === "Backspace") { e.preventDefault(); markCurrent(false); }
   });
 
-  $("rightBtn").onclick = function () { answerTimed(true); };
-  $("wrongBtn").onclick = function () { answerTimed(false); };
+  $("rightBtn").onclick = function () { markCurrent(true); };
+  $("wrongBtn").onclick = function () { markCurrent(false); };
   $("startBtn").onclick = function () { startRound(buildDeck()); };
   $("timedBtn").onclick = function () { startTimed(); };
+  document.querySelectorAll(".fact").forEach(function (b) {
+    b.onclick = function () { startFacts(+b.dataset.n); };
+  });
   $("quitBtn").onclick = function () {
+    if (mode === "review") {
+      review = null;
+      mode = "practice";
+      hidePlayChrome();
+      releaseWake();
+      if (reviewFrom === "results") show("results");
+      else { show("setup"); renderSetup(); }
+      return;
+    }
     if (mode === "timed") {
       if (timed) { timed.running = false; timed.finished = true; }
       timed = null;
       mode = "practice";
       stopTicking();
-      hideTimedChrome();
+      hidePlayChrome();
       releaseWake();
     }
     show("setup");
     renderSetup();
   };
   $("againBtn").onclick = function () { show("setup"); renderSetup(); };
-  $("resultAgain").onclick = function () { startTimed(); };
+  $("practiceMissed").onclick = function () { startReview(lastMissed, "results"); };
+  $("resultAgain").onclick = function () {
+    if (again.kind === "facts") startFacts(again.n);
+    else startTimed();
+  };
   $("resultHome").onclick = function () { show("setup"); renderSetup(); };
   $("resultHistory").onclick = function () { openHistory("results"); };
   $("openHistory").onclick = function () { openHistory("setup"); };
