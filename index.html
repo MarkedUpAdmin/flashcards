@@ -295,6 +295,22 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 }
 #clearHistory:disabled { opacity: .45; }
 .device-note { text-align: center; opacity: .7; font-size: .85rem; margin: 8px 0 0; flex: none; }
+.goal-card { margin: 0 0 14px; text-align: left; }
+.goal-label { font-weight: 700; font-size: 1.05rem; }
+.goal-track { height: 14px; border-radius: 8px; background: rgba(255,255,255,.22); overflow: hidden; margin-top: 8px; }
+.goal-fill { height: 100%; width: 0; background: var(--chip-on); border-radius: 8px; }
+.goal-card.met .goal-fill { background: var(--ok); }
+.goal-note { min-height: 1.3em; margin-top: 6px; font-weight: 700; font-size: .98rem; }
+.goal-note.celebrate { color: var(--chip-on); }
+.goal-step { display: flex; align-items: center; gap: 8px; flex: none; }
+.goal-step button { min-width: 44px; min-height: 44px; border-radius: 12px; background: rgba(255,255,255,.16); font-size: 1.4rem; font-weight: 700; }
+.goal-step span { min-width: 2ch; text-align: center; font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.filters button { min-height: 40px; padding: 6px 10px; border-radius: 12px; background: rgba(255,255,255,.12); font-size: .92rem; font-weight: 600; }
+.filters button[aria-pressed="true"] { background: var(--chip-on); color: var(--chip-on-ink); }
+.day-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin: 14px 0 0; font-weight: 700; }
+.day-head span { font-weight: 600; opacity: .85; font-size: .92rem; text-align: right; }
+.streak { font-weight: 700; margin: 0 0 8px; }
 
 @media (prefers-reduced-motion: reduce) {
   .card, .card.leave, .card.back-leave, .card.pop { transition: none; animation: none; }
@@ -310,6 +326,11 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       <button id="openHistory" type="button">My times</button>
     </div>
     <p class="lead">Pick the facts to practice. You can mix sets from all three. Say the answer, tap the card to check it, then mark Got it or Missed.</p>
+    <div class="goal-card" id="setupGoal">
+      <div class="goal-label" id="setupGoalText">Today: 0 / 10 runs</div>
+      <div class="goal-track" aria-hidden="true"><div class="goal-fill" id="setupGoalFill"></div></div>
+      <div class="goal-note" id="setupGoalNote"></div>
+    </div>
 
     <div class="ops" role="tablist" id="ops">
       <button class="op" role="tab" data-op="add" type="button">Add<small></small></button>
@@ -334,6 +355,14 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     <div class="option">
       <div>Show answers<small>Faint answer under the line, for you</small></div>
       <button class="switch" role="switch" id="optAns" aria-label="Show answers" type="button"></button>
+    </div>
+    <div class="option">
+      <div>Daily goal<small>Completed rounds per day</small></div>
+      <div class="goal-step">
+        <button id="goalDown" type="button" aria-label="Lower the daily goal">−</button>
+        <span id="goalValue">10</span>
+        <button id="goalUp" type="button" aria-label="Raise the daily goal">+</button>
+      </div>
     </div>
     <div class="setup-actions">
       <button class="start" id="startBtn" type="button">Start</button>
@@ -386,6 +415,11 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   <div class="big" id="resultCorrect">0</div>
   <p id="resultCorrectLabel">correct</p>
   <p id="resultDetail"></p>
+  <div class="goal-card" id="resultGoal">
+    <div class="goal-label" id="resultGoalText">Today: 0 / 10 runs</div>
+    <div class="goal-track" aria-hidden="true"><div class="goal-fill" id="resultGoalFill"></div></div>
+    <div class="goal-note" id="resultGoalNote"></div>
+  </div>
   <p id="resultBest"></p>
   <p id="resultSettings"></p>
   <div class="retry-list" id="resultMissed"></div>
@@ -400,6 +434,19 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     <button id="historyBack" type="button">Back</button>
   </div>
   <h2>My times</h2>
+  <div class="streak" id="historyStreak"></div>
+  <div class="filters" id="historyFilters">
+    <button type="button" data-filter="mode" data-value="all" aria-pressed="true">All</button>
+    <button type="button" data-filter="mode" data-value="60s">60s</button>
+    <button type="button" data-filter="mode" data-value="24">24</button>
+    <button type="button" data-filter="mode" data-value="30">30</button>
+    <button type="button" data-filter="mode" data-value="40">40</button>
+    <button type="button" data-filter="mode" data-value="50">50</button>
+    <button type="button" data-filter="op" data-value="all" aria-pressed="true">All ops</button>
+    <button type="button" data-filter="op" data-value="add">Add</button>
+    <button type="button" data-filter="op" data-value="sub">Subtract</button>
+    <button type="button" data-filter="op" data-value="mul">Multiply</button>
+  </div>
   <div class="history-scroll">
     <div class="bests" id="bests"></div>
     <div id="historyList"></div>
@@ -419,7 +466,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     sub: { sym: "\u2212", name: "subtraction", title: "Subtraction", sets: [1,2,3,4,5,6,7,8,9] },
     mul: { sym: "\u00d7", name: "multiplication", title: "Multiplication", sets: [1,2,3,4,5,6,7,8,9,10,11,12] }
   };
-  var state = { sets: { add: [0,1,2,3], sub: [], mul: [] }, tab: "add", shuffle: true, zero: false, answers: false };
+  var state = { sets: { add: [0,1,2,3], sub: [], mul: [] }, tab: "add", shuffle: true, zero: false, answers: false, goal: 10 };
   try {
     var saved = JSON.parse(localStorage.getItem(KEY) || "null");
     if (saved) {
@@ -429,6 +476,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       if (!OPS[state.tab]) state.tab = "add";
     }
   } catch (e) {}
+  if (typeof state.goal !== "number" || !(state.goal >= 1)) state.goal = 10;
+  state.goal = Math.max(1, Math.min(99, Math.round(state.goal)));
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
   // ---- Setup screen ----
@@ -500,6 +549,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     document.querySelectorAll(".fact").forEach(function (b) {
       b.disabled = n === 0;
     });
+    $("goalValue").textContent = String(state.goal);
+    paintGoal("setup", false);
   }
 
   // ---- Play ----
@@ -515,6 +566,8 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
   var shownSec = -1;
   var shownTimer = "";
   var historyReturn = "setup";
+  var histMode = "all";
+  var histOp = "all";
 
   function shuffle(a) {
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -1004,6 +1057,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       return raw.filter(validRound);
     } catch (e) { return []; }
   }
+  var HISTORY_KEEP = 1000;
   function persistRounds(list) {
     var copy = list.slice();
     while (copy.length) {
@@ -1015,7 +1069,9 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
           try { localStorage.removeItem(TIMES_KEY); } catch (e2) {}
           return;
         }
-        copy.splice(0, Math.ceil(copy.length / 2));
+        // Oldest rounds are first. Keep at least 1,000 unless the device cannot store that many.
+        if (copy.length > HISTORY_KEEP) copy.splice(0, copy.length - HISTORY_KEEP);
+        else copy.splice(0, 1);
       }
     }
   }
@@ -1113,6 +1169,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     };
     if (timed.op === "mix") record.ops = timed.ops;
     var missedCards = timed.missed.slice();
+    var beforeToday = runsOnDay(loadRounds(), dayKey(Date.now()));
     var info = recordRound(record);
     var headline = isFacts
       ? timed.factTarget + " facts in " + formatSeconds(record.elapsed) + " s"
@@ -1126,6 +1183,9 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     $("resultSettings").textContent = settingsText(record);
     $("resultAgain").textContent = isFacts ? "Another " + timed.factTarget + " facts" : "Another 60 seconds";
     showMissedFacts(missedCards);
+    var afterToday = runsOnDay(loadRounds(), dayKey(Date.now()));
+    paintGoal("result", beforeToday < state.goal && afterToday >= state.goal);
+    paintGoal("setup", false);
     mode = "practice";
     hidePlayChrome();
     show("results");
@@ -1158,6 +1218,75 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     parts.push(best.answers ? "answers shown" : "answers hidden");
     return parts.join(" · ");
   }
+  function dayKey(ts) {
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) return "";
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function dayLabel(key) {
+    var p = key.split("-");
+    var d = new Date(+p[0], (+p[1] || 1) - 1, +p[2] || 1, 12);
+    try {
+      return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    } catch (e) { return key; }
+  }
+  function runsOnDay(rounds, key) {
+    var n = 0;
+    rounds.forEach(function (r) { if (dayKey(r.t) === key) n += 1; });
+    return n;
+  }
+  function dayCounts(rounds) {
+    var counts = {};
+    rounds.forEach(function (r) {
+      var k = dayKey(r.t);
+      if (!k) return;
+      counts[k] = (counts[k] || 0) + 1;
+    });
+    return counts;
+  }
+  function goalMetOn(counts, key) {
+    return (counts[key] || 0) >= state.goal;
+  }
+  function currentStreak(rounds) {
+    var counts = dayCounts(rounds);
+    function met(offset) {
+      var d = new Date();
+      d.setHours(12, 0, 0, 0);
+      d.setDate(d.getDate() - offset);
+      return goalMetOn(counts, dayKey(d.getTime()));
+    }
+    var start = met(0) ? 0 : 1;
+    if (!met(start)) return 0;
+    var n = 0;
+    for (var i = start; met(i); i++) n += 1;
+    return n;
+  }
+  function paintGoal(prefix, celebrate) {
+    var rounds = loadRounds();
+    var today = runsOnDay(rounds, dayKey(Date.now()));
+    var met = today >= state.goal;
+    var text = "Today: " + today + " / " + state.goal + " runs";
+    $(prefix + "GoalText").textContent = text;
+    $(prefix + "GoalFill").style.width = Math.min(100, Math.round(today / state.goal * 100)) + "%";
+    $(prefix + "Goal").classList.toggle("met", met);
+    var note = $(prefix + "GoalNote");
+    note.classList.toggle("celebrate", !!celebrate);
+    if (celebrate) note.textContent = "Goal reached!";
+    else if (met) note.textContent = "Goal met today";
+    else {
+      var streak = currentStreak(rounds);
+      note.textContent = streak ? streak + " day streak" : "";
+    }
+  }
+  function roundMatches(r) {
+    if (histMode !== "all" && roundMode(r) !== histMode) return false;
+    if (histOp === "all") return true;
+    if (r.op === histOp) return true;
+    return r.op === "mix" && r.ops && Array.isArray(r.ops[histOp]) && r.ops[histOp].length > 0;
+  }
+  function timeText(r) {
+    return formatSeconds(roundElapsed(r)) + " s";
+  }
   function renderHistory() {
     var rounds = loadRounds().sort(function (a, b) { return b.t - a.t; });
     var groups = {};
@@ -1188,15 +1317,38 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       });
       bestsEl.appendChild(box);
     });
+    var counts = dayCounts(rounds);
+    var streak = currentStreak(rounds);
+    $("historyStreak").textContent = streak
+      ? streak + " day streak · goal is " + state.goal + " runs"
+      : "No streak yet · goal is " + state.goal + " runs";
+    var shown = rounds.filter(roundMatches);
     var list = $("historyList");
     list.innerHTML = "";
-    if (!rounds.length) {
+    if (!shown.length) {
       var empty = document.createElement("p");
       empty.className = "history-empty";
-      empty.textContent = "No rounds yet. Play a 60-second round or a set number of facts and the score will show up here.";
+      empty.textContent = rounds.length
+        ? "No rounds match this filter. " + rounds.length + " saved in all."
+        : "No rounds yet. Play a 60-second round or a set number of facts and the score will show up here.";
       list.appendChild(empty);
     }
-    rounds.forEach(function (r) {
+    var lastDay = "";
+    shown.forEach(function (r) {
+      var key = dayKey(r.t);
+      if (key !== lastDay) {
+        lastDay = key;
+        var head = document.createElement("div");
+        head.className = "day-head";
+        var name = document.createElement("div");
+        name.textContent = dayLabel(key);
+        var stat = document.createElement("span");
+        var n = counts[key] || 0;
+        stat.textContent = n + (n === 1 ? " run" : " runs") + (goalMetOn(counts, key) ? " · Goal met" : " · Goal not met");
+        head.appendChild(name);
+        head.appendChild(stat);
+        list.appendChild(head);
+      }
       var row = document.createElement("div");
       row.className = "round";
       var when = document.createElement("div");
@@ -1210,12 +1362,10 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
       }
       var score = document.createElement("div");
       score.className = "scoreline";
-      var scoreText = r.correct + " correct / " + r.attempted + " tried · " + accuracyPct(r) + "%";
-      if (roundCompleted(r)) scoreText = "Finished in " + formatSeconds(roundElapsed(r)) + " s · " + scoreText;
-      score.textContent = scoreText;
+      score.textContent = r.correct + " / " + r.attempted + " correct · " + timeText(r);
       var meta = document.createElement("div");
       meta.className = "meta";
-      meta.textContent = settingsText(r);
+      meta.textContent = modeLabel(r) + " · " + opTitle(r);
       row.appendChild(when);
       row.appendChild(score);
       row.appendChild(meta);
@@ -1254,6 +1404,28 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
 
   $("rightBtn").onclick = function () { markCurrent(true); };
   $("wrongBtn").onclick = function () { markCurrent(false); };
+  $("goalDown").onclick = function () {
+    if (state.goal <= 1) return;
+    state.goal -= 1;
+    save();
+    renderSetup();
+  };
+  $("goalUp").onclick = function () {
+    if (state.goal >= 99) return;
+    state.goal += 1;
+    save();
+    renderSetup();
+  };
+  document.querySelectorAll("#historyFilters button").forEach(function (b) {
+    b.onclick = function () {
+      if (b.dataset.filter === "mode") histMode = b.dataset.value;
+      else histOp = b.dataset.value;
+      document.querySelectorAll('#historyFilters button[data-filter="' + b.dataset.filter + '"]').forEach(function (other) {
+        other.setAttribute("aria-pressed", other === b ? "true" : "false");
+      });
+      renderHistory();
+    };
+  });
   $("startBtn").onclick = function () { startRound(buildDeck()); };
   $("timedBtn").onclick = function () { startTimed(); };
   document.querySelectorAll(".fact").forEach(function (b) {
