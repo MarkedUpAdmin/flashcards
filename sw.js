@@ -1,5 +1,5 @@
 // Keeps the flashcards working offline after the first visit.
-const CACHE = "flashcards-v4";
+const CACHE = "flashcards-v5";
 const FILES = ["./", "index.html", "manifest.webmanifest", "apple-touch-icon.png", "icon-192.png", "icon-512.png"];
 
 function fresh(path) {

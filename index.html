@@ -539,13 +539,14 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     updateScore();
     updateMarkState();
   }
-  function answerReady() { return state.answers || revealed; }
+  function needsReveal() { return !(mode === "timed" && timed && timed.kind !== "facts"); }
+  function answerReady() { return !needsReveal() || state.answers || revealed; }
   function updateMarkState() {
     var ready = answerReady();
     $("rightBtn").disabled = !ready;
     $("wrongBtn").disabled = !ready;
     $("hint").hidden = false;
-    $("hint").textContent = ready
+    $("hint").textContent = !needsReveal() || ready
       ? "Got it if you were right · Missed if you were not"
       : "Say the answer out loud, then tap the card";
   }
@@ -580,7 +581,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     var spoken = c[1] + (c[0] === "add" ? " plus " : c[0] === "sub" ? " minus " : " times ") + c[2];
     $("card").setAttribute("role", "button");
     $("card").setAttribute("tabindex", "0");
-    $("card").setAttribute("aria-label", showNow ? spoken + " is " + c[3] : "Tap to show the answer. " + spoken);
+    $("card").setAttribute("aria-label", !needsReveal() ? spoken : (showNow ? spoken + " is " + c[3] : "Tap to show the answer. " + spoken));
     if (mode === "review" && review) {
       var left = review.queue.length;
       $("progress").textContent = left + (left === 1 ? " fact left" : " facts left");
@@ -598,7 +599,7 @@ button:focus-visible { outline: 3px solid var(--chip-on); outline-offset: 3px; }
     updateMarkState();
   }
   function revealAnswer() {
-    if (answerReady()) return;
+    if (!needsReveal() || answerReady()) return;
     revealed = true;
     renderCard();
   }
